@@ -22,8 +22,8 @@ class SavingsAccount(total: BigDecimal) extends Account[SavingsAccount] {
 }
 ```
 
-This sort of self-referential type constraint is known formally as (F-bounded type
-polymorphism)[http://www.cs.utexas.edu/~wcook/papers/FBound89/CookFBound89.pdf]
+This sort of self-referential type constraint is known formally as [F-bounded type
+polymorphism](http://www.cs.utexas.edu/~wcook/papers/FBound89/CookFBound89.pdf)
 and is usually attempted when someone is trying to solve a common problem of
 abstraction in object-oriented languages; how to define a polymorphic function
 that, though defined in terms of a supertype, will when passed a value of some

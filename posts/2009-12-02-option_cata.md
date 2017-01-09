@@ -2,7 +2,7 @@
 title: The Catamorphism Challenge
 ---
 
-My solution to Tony's (catamorphism challenge)[http://blog.tmorris.net/debut-with-a-catamorphism/]:
+My solution to Tony's [catamorphism challenge](http://blog.tmorris.net/debut-with-a-catamorphism/):
 
 ```scala
 trait MyOption[+A] {

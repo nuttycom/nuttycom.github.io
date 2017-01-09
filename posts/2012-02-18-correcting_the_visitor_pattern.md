@@ -4,8 +4,8 @@ title: Correcting the Visitor Pattern
 
 I'm writing this post because I want to address a problem that I see time and
 time again: people who are trying to figure out how to encode algebraic data
-types in languages that do not support them come up with (all kinds of crazy
-solutions)[http://shahriarhaque.com/blog/blog/structural-pattern-matching-using-exceptions/].
+types in languages that do not support them come up with [all kinds of crazy
+solutions](http://shahriarhaque.com/blog/blog/structural-pattern-matching-using-exceptions/).
 But, there is a simple and effective encoding of algebraic data types that
 everyone knows about, but had just been doing wrong: the Visitor pattern.  At
 this point, I expect many devotees of functional programming to start screaming
@@ -110,12 +110,10 @@ public class Example {
 
 TreeVisitor encodes the *f-algebra* for the Tree data type; the accept method
 is the *catamorphism* for Tree. Moreover, given this definition, you can also
-see that (the visitor forms a
-monad)[http://logji.blogspot.com/2009/12/reader-monad-for-visitor-pattern.html]
-(example in Scala), giving rise to lots of nice compositional properties.
-Implemented in this fashion, Visitor is actually nothing more (and nothing
-less) than a multiple dispatch function over the algebraic data type in
-question. So stop returning void from your visitors, and ramp up their power in
-the process!
+see that [the visitor forms a monad](./2009-12-08-monadic_visitor.html) (example
+in Scala), giving rise to lots of nice compositional properties.  Implemented
+in this fashion, Visitor is actually nothing more (and nothing less) than a
+multiple dispatch function over the algebraic data type in question. So stop
+returning void from your visitors, and ramp up their power in the process!
 
 *migrated from http://logji.blogspot.com/2012/02/correcting-visitor-pattern.html *

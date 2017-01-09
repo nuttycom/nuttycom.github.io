@@ -82,7 +82,7 @@ After a bit of thinking, I realized that this monad is really more general than
 being simply related to success or failure - it simply models a function that
 may or may not produce some additional metadata about its result. Then a
 lightbulb went off, and quick google search confirmed... yup, I just reinvented
-the (writer monad)[http://www.haskell.org/all_about_monads/html/writermonad.html].  
+the [writer monad](http://www.haskell.org/all_about_monads/html/writermonad.html).  
 It's not *exactly* like Writer, because it just requires a semigroup for E instead
 of a monoid, and the presence of a "log" is optional, so maybe it's better
 suited than Writer for a few instances.
