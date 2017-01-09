@@ -24,12 +24,20 @@
         <div id="content">
             <h1>2016-07-08-the_strange_case_of_partial_functions</h1>
 
-            <div class="info">
-    Posted on July  8, 2016
-    
-</div>
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 
-<h1 id="the-strange-case-of-partial-functions">The Strange Case of Partial Functions</h1>
+  <div class="info">
+      Posted on July  8, 2016
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+
+  <h1 id="the-strange-case-of-partial-functions">The Strange Case of Partial Functions</h1>
 <p>This is an extended response to the twitter discussion that arose from <a href="https://twitter.com/hseeberger/status/751269895808032768">this tweet</a>.</p>
 <p>There is a problem with PartialFunction in Scala, and I don’t mean the fact that, in the current standard library, PartialFunction is a subtype of Function1. As I’ll try to illustrate, the strange inheritance relationship is the least of its problems. What I want to look at is what PartialFunction means in terms of API design, and what we can learn from this with respect to what the relationship between PartialFunction and Function1 might usefully look like in a future version of Scala.</p>
 <p>To begin with, let’s contrast <code>PartialFunction[A, B]</code> with its semantic rival, <code>A =&gt; Option[B]</code>. The most frequent justification I’ve heard for preferring the former in some cases is that the result value is not boxed by an Option instance, and that avoiding this boxing saves on memory and allocation overhead. Let’s call this the allocation argument.</p>
@@ -44,6 +52,26 @@
 <p>Given all these constraints placed upon the caller, it’s very very rare that we actually want to define a function that takes a PartialFunction as an argument. So rare that the presence of PartialFunction in the standard library itself is a pretty questionable decision - it’s a pretty innocent looking little trait, with a <em>lot</em> of subtle implications, all tied to performance, which we know is a complex subject and which is something we don’t want to optimize for prematurely to begin with!</p>
 <p>If we consider instead APIs that return (rather than accept) PartialFunction instances, we’re hardly in better shape. Non-total pattern match literals can generate partial functions automatically, which can make for <em>slightly</em> cleaner DSLs. However, given the fact that very few APIs should be written to consume those PartialFunctions, who is going to be around to consume them?</p>
 <p>Overall, <code>PartialFunction</code> is tricky to deal with, frequently requires ascription, and fundamentally doesn’t pull its weight, and probably shouldn’t be included in a future version of Scala at all.</p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2016-07-08-the_strange_case_of_partial_functions.html";  
+    this.page.identifier = "/posts/2016-07-08-the_strange_case_of_partial_functions.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
 
         </div>
         <div id="footer">

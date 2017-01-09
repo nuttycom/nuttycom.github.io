@@ -24,12 +24,20 @@
         <div id="content">
             <h1>2015-07-15-what_is_and_what_means</h1>
 
-            <div class="info">
-    Posted on July 15, 2015
-    
-</div>
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 
-<h1 id="what-things-are-and-what-they-mean.">What things are, and what they mean.</h1>
+  <div class="info">
+      Posted on July 15, 2015
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+
+  <h1 id="what-things-are-and-what-they-mean.">What things are, and what they mean.</h1>
 <p>This is a continuation <a href="https://twitter.com/raichoo/status/622002344390225920">this discussion</a>. I’m writing this because I need a bit more space to lay out my thoughts more clearly.</p>
 <p>The discussion around “typeclass coherence” is one that seems to divide even people who generally agree on a lot of things about programming - that static type systems are valuable, that modularity is desirable, and that being able to reason about software in terms of composability and laws is necessary if we ever want to be able to stop rewriting the entire ecosystem every few years, just because it has accrued too much cruft.</p>
 <p>I’m going to make an analogy here to the IO type in Haskell before I dive into my position on typeclass coherence. Initially, IO was devised as a mechanism - a hack, really - to make it possible (or at lease easier) to reason about effects in the presence of pervasive laziness. The IO type does this admirably, but the way that it does it is that it gives us equational reasoning in the presence of effects. Now, there are good arguments that in some way, the reasoning capability we gain is somewhat trivial, in that we’ve simply banished the problem to an external system. Nonetheless, it’s very clear that in terms of the everyday process of writing software, being able to refactor by treating effectful computations as values and being able to move them around freely is very useful, as is the ability to use types to help us track and distinguisg effectful computations as being separate from pure ones. We have discovered that IO (and narrower effect types, encoded as free monads) have the most meaning in terms of the feature - referential transparency - that they provide.</p>
@@ -57,6 +65,26 @@ pureMaybe a <span class="fu">=</span> <span class="dt">Just</span> a
 <p>Something important to note here is that the in the definition of the <code>Monad</code> typeclass, all of the available type variables are abstract. We have no additional structure that we can use to inspect obedience to the monad laws - we are forced to to rely entirely on parametricity (and the unenforced monad laws, which we at present must simply trust will be obeyed by the implementer) when reasoning about the behavior of any application of <code>(&gt;&gt;=)</code> or <code>return</code>.</p>
 <p>Compare this now to my favorite whipping-child typeclasses, <code>FromJSON</code> and <code>ToJSON</code>. These “typeclasses” (though not worthy of the name) expose the <code>Value</code> type directly in their functions, and consequently destroy our ability to reason parametrically. Even if we combined these typeclasses to create a new <code>SerializeJSON</code> class, we’d still be simply using the typeclass mechanism to allow us to overload a bunch of function names, and we’re in fact limited by the fact that we can’t easily refer to the <code>MyType.parseJSON</code> function directly - and if we want to refer just to that capability for a type, we’re forced into capturing the <code>FromJSON</code> typeclass instance existentially, which is widely (and appropriately) considered a bad idea.</p>
 <p>In summary, I think that we need to separate our ideas about overloading and implicity dictionary passing from how we make it possible to use values of newly defined types in the contest of globally-defined polymorphic functions. Let’s use typeclasses for the latter, and as for the former, for now I’m just going to keep passing regular old functions or explicit dictionaries. Using typeclasses in all the places we want to use overloading just muddies the waters too much.</p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2015-07-15-what_is_and_what_means.html";  
+    this.page.identifier = "/posts/2015-07-15-what_is_and_what_means.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
 
         </div>
         <div id="footer">
