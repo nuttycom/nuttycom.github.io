@@ -21,11 +21,9 @@ call this the allocation argument.
 So, let's think about what this means in terms of API design. Suppose that I
 define a method taking a partial function as an argument:
 
-~~~{scala}
-
+```scala
 def foo(f: PartialFunction[String, Int]) = ???
-
-~~~
+```
 
 This signature gives us a little bit of information: it essentially promises to
 the caller that I will, at some point in the evaluation of foo, call
@@ -33,11 +31,9 @@ the caller that I will, at some point in the evaluation of foo, call
 call `f(someString)`. Fair enough. There's something else, though; as the
 author of this method, I had the option to define it as:
 
-~~~{scala}
-
+```scala
 def foo(f: String => Option[Int]) = ???
-
-~~~
+```
 
 In general in scala, we prefer to work with total functions wherever possible,
 so by choosing *not* to define the argument to `foo` as returning `Option[Int]`,
