@@ -4,14 +4,14 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <meta name="keywords" content="functional programming, scala, haskell, voting">
-        <title>Logji - 2016-07-08-the_strange_case_of_partial_functions</title>
+        <title>Logji - The Strange Case of Partial Functions</title>
         <link rel="stylesheet" type="text/css" href="../css/default.css" />
         <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
     </head>
     <body>
         <div id="header">
             <div id="logo">
-                <a href="../">Logji</a>
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
             </div>
             <div id="navigation">
                 <a href="../">Home</a>
@@ -22,7 +22,7 @@
         </div>
 
         <div id="content">
-            <h1>2016-07-08-the_strange_case_of_partial_functions</h1>
+            <h1>The Strange Case of Partial Functions</h1>
 
             <article>
   <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
@@ -36,9 +36,7 @@
       
   </div>
 
-
-  <h1 id="the-strange-case-of-partial-functions">The Strange Case of Partial Functions</h1>
-<p>This is an extended response to the twitter discussion that arose from <a href="https://twitter.com/hseeberger/status/751269895808032768">this tweet</a>.</p>
+  <p>This is an extended response to the twitter discussion that arose from <a href="https://twitter.com/hseeberger/status/751269895808032768">this tweet</a>.</p>
 <p>There is a problem with PartialFunction in Scala, and I don’t mean the fact that, in the current standard library, PartialFunction is a subtype of Function1. As I’ll try to illustrate, the strange inheritance relationship is the least of its problems. What I want to look at is what PartialFunction means in terms of API design, and what we can learn from this with respect to what the relationship between PartialFunction and Function1 might usefully look like in a future version of Scala.</p>
 <p>To begin with, let’s contrast <code>PartialFunction[A, B]</code> with its semantic rival, <code>A =&gt; Option[B]</code>. The most frequent justification I’ve heard for preferring the former in some cases is that the result value is not boxed by an Option instance, and that avoiding this boxing saves on memory and allocation overhead. Let’s call this the allocation argument.</p>
 <p>So, let’s think about what this means in terms of API design. Suppose that I define a method taking a partial function as an argument:</p>

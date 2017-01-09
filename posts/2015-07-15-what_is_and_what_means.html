@@ -4,14 +4,14 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <meta name="keywords" content="functional programming, scala, haskell, voting">
-        <title>Logji - 2015-07-15-what_is_and_what_means</title>
+        <title>Logji - What things are, and what they mean.</title>
         <link rel="stylesheet" type="text/css" href="../css/default.css" />
         <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
     </head>
     <body>
         <div id="header">
             <div id="logo">
-                <a href="../">Logji</a>
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
             </div>
             <div id="navigation">
                 <a href="../">Home</a>
@@ -22,7 +22,7 @@
         </div>
 
         <div id="content">
-            <h1>2015-07-15-what_is_and_what_means</h1>
+            <h1>What things are, and what they mean.</h1>
 
             <article>
   <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
@@ -36,9 +36,7 @@
       
   </div>
 
-
-  <h1 id="what-things-are-and-what-they-mean.">What things are, and what they mean.</h1>
-<p>This is a continuation <a href="https://twitter.com/raichoo/status/622002344390225920">this discussion</a>. I’m writing this because I need a bit more space to lay out my thoughts more clearly.</p>
+  <p>This is a continuation of <a href="https://twitter.com/raichoo/status/622002344390225920">this discussion</a>. I’m writing this because I need a bit more space to lay out my thoughts more clearly.</p>
 <p>The discussion around “typeclass coherence” is one that seems to divide even people who generally agree on a lot of things about programming - that static type systems are valuable, that modularity is desirable, and that being able to reason about software in terms of composability and laws is necessary if we ever want to be able to stop rewriting the entire ecosystem every few years, just because it has accrued too much cruft.</p>
 <p>I’m going to make an analogy here to the IO type in Haskell before I dive into my position on typeclass coherence. Initially, IO was devised as a mechanism - a hack, really - to make it possible (or at lease easier) to reason about effects in the presence of pervasive laziness. The IO type does this admirably, but the way that it does it is that it gives us equational reasoning in the presence of effects. Now, there are good arguments that in some way, the reasoning capability we gain is somewhat trivial, in that we’ve simply banished the problem to an external system. Nonetheless, it’s very clear that in terms of the everyday process of writing software, being able to refactor by treating effectful computations as values and being able to move them around freely is very useful, as is the ability to use types to help us track and distinguisg effectful computations as being separate from pure ones. We have discovered that IO (and narrower effect types, encoded as free monads) have the most meaning in terms of the feature - referential transparency - that they provide.</p>
 <h2 id="typeclass-coherence">Typeclass Coherence</h2>
