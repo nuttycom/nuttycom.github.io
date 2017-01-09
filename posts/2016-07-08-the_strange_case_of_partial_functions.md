@@ -1,5 +1,6 @@
-The Strange Case of Partial Functions
-=====================================
+---
+title: The Strange Case of Partial Functions
+---
 
 This is an extended response to the twitter discussion that arose from [this
 tweet](https://twitter.com/hseeberger/status/751269895808032768).

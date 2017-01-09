@@ -1,6 +1,8 @@
-# What things are, and what they mean.
+---
+title: What things are, and what they mean.
+---
 
-This is a continuation [this
+This is a continuation of [this
 discussion](https://twitter.com/raichoo/status/622002344390225920).  I'm
 writing this because I need a bit more space to lay out my thoughts more
 clearly.
