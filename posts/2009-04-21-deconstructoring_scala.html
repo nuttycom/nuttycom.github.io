@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - Deconstruct(or)ing Scala</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Deconstruct(or)ing Scala</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on April 21, 2009
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>The question of whether to use a constructor or a factory method for object construction is not new; we’ve had this discussion for years in the Java community. Scala’s approach to object construction has a few features that will undoubtedly reignite this debate.</p>
+<p>On the one hand, ordinary object construction is significantly more powerful than in Java - first, the all the ordinary Java boilerplate of assigning constructor parameters to member variables is abolished. What in Java would look like this:</p>
+<div class="sourceCode"><pre class="sourceCode java"><code class="sourceCode java"><span class="kw">public</span> <span class="kw">class</span> Foo {
+  <span class="dt">final</span> <span class="dt">int</span> myInt;
+  <span class="dt">final</span> String myString;
+
+  <span class="kw">public</span> <span class="fu">Foo</span>(<span class="dt">int</span> myInt, String myString) {
+    <span class="kw">this</span>.<span class="fu">myInt</span> = myInt;
+    <span class="kw">this</span>.<span class="fu">myString</span> = myString;
+  }
+}</code></pre></div>
+<p>becomes the concise and sensible</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> <span class="fu">Foo</span>(<span class="kw">val</span> myInt: Int, <span class="kw">val</span> myString: String)</code></pre></div>
+<p>More significantly, Scala’s trait mechanism allows for extension of a class definition at the use site; for example, if I have a trait that adds rendering logic to a class, I can mix it in only when I need it.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> FooRenderer <span class="kw">extends</span> Foo {
+  <span class="kw">def</span> render: String = <span class="st">&quot;I'm a Foo! My int is &quot;</span>+myInt+<span class="st">&quot; and my string is &quot;</span>+myString
+}
+
+<span class="kw">val</span> f1 = <span class="kw">new</span> <span class="fu">Foo</span>(<span class="dv">1</span>, <span class="st">&quot;hi&quot;</span>) <span class="co">// normal Foo</span>
+<span class="kw">val</span> f2 = <span class="kw">new</span> <span class="fu">Foo</span>(<span class="dv">2</span>, <span class="st">&quot;well, hello!&quot;</span>) <span class="kw">with</span> FooRenderer <span class="co">// renderable Foo</span></code></pre></div>
+<p>So Scala’s constructors are really powerful and you really want to use them, right? But wait…</p>
+<p>It turns out that there are some subtle issues that arise if you start adding more logic to constructors in Scala. The logic of a Scala constructor goes directly in the body of the class, and here’s the tricky bit: this is also where other member variables that aren’t just blindly assigned as constructor parameters are declared and assigned. In Java, any intermediate variables that you used within a constructor were unavoiably local; in Scala they can easily (and will, if care is not taken) become a permanent part of the object.</p>
+<p>Let’s look at something a little more complex. Consider a class that, as part of its construction, finds the most common element in a list and assigns both that element and the number of occurrences to member variables.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> Common[T](l: Iterable[T]) {
+  <span class="kw">val</span> (value, count) = l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) { (m, v) =&gt;
+    m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))
+  } reduceLeft { (a, b) =&gt;
+    <span class="kw">if</span> (a.<span class="fu">_2</span> &gt; b.<span class="fu">_2</span>) a <span class="kw">else</span> b
+  }
+}</code></pre></div>
+<p>Now, there may be ways to implement this that avoid constructing and decomposing a tuple, but this is the most straightforward and efficient implementation I could come up with. A peek at the generated bytecode reveals something interesting, however:</p>
+<pre><code>93: putfield #83; //Field x$1:Lscala/Tuple2;
+96: aload_0
+97: aload_0
+98: getfield #83; //Field x$1:Lscala/Tuple2;
+101: invokevirtual #73; //Method scala/Tuple2._1:()Ljava/lang/Object;
+104: putfield #85; //Field value:Ljava/lang/Object;
+107: aload_0
+108: aload_0
+109: getfield #83; //Field x$1:Lscala/Tuple2;
+112: invokevirtual #76; //Method scala/Tuple2._2:()Ljava/lang/Object;
+115: invokestatic #91; //Method scala/runtime/BoxesRunTime.unboxToInt:(Ljava/lang/Object;)I
+118: putfield #93; //Field count:I</code></pre>
+<p>What’s up with line 93? I didn’t want that spurious Tuple2 to hang around as a member field - I just needed it as an intermediate value in the construction of the object!</p>
+<p>As it turns out, this problem is not restricted to tuples; if you use intermediate variables in the construction of your objects, they will become permanent residents. This may not be a real problem in most circumstances, but it feels messy. Now, the standard thing to do in this situation would to be to create a factory method on the companion object:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Common {
+  <span class="kw">def</span> apply[T](l: Iterable[T]): Common[T] = {
+    <span class="kw">val</span> (value, count) = l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) {(m, v) =&gt;
+      m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))
+    }.<span class="fu">reduceLeft</span> {(a, b) =&gt;
+      <span class="kw">if</span> (a.<span class="fu">_2</span> &gt; b.<span class="fu">_2</span>) a <span class="kw">else</span> b
+    }
+
+    <span class="kw">new</span> <span class="fu">Common</span>(value, count)
+  }
+}
+
+<span class="kw">class</span> Common[T](<span class="kw">val</span> value: T, <span class="kw">val</span> count: Int)</code></pre></div>
+<p>Now there’s no intermediate variable stored in the bytecode for Common, but we have a new problem: we can no longer construct the object from an iterable while mixing in an additional trait at the instantiation site!</p>
+<p>Scala supports the use of auxiliary constructors, with the caveat (similar to that present in Java) that the first statement in an auxiliary constructor must be either a call to the primary constructor, or another auxiliary constructor. Because of this constraint, we can’t simply use the contents of the factory method above in an auxiliary constructor. We can, however, evaluate a method within the chained call, and that gives us a workable, if somewhat boilerplate-laden solution.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> Common[T](<span class="kw">val</span> value: T, <span class="kw">val</span> count: Int) {
+  <span class="kw">private</span> <span class="kw">def</span> <span class="kw">this</span>(t: Tuple2[T, Int]) = <span class="kw">this</span>(t.<span class="fu">_1</span>, t.<span class="fu">_2</span>)
+
+  <span class="kw">def</span> <span class="kw">this</span>(l: Iterable[T]) = <span class="kw">this</span>(
+    l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) {(m, v) =&gt;
+      m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))
+    }.<span class="fu">reduceLeft</span> {(a, b) =&gt;
+      <span class="kw">if</span> (a.<span class="fu">_2</span> &gt; b.<span class="fu">_2</span>) a <span class="kw">else</span> b
+    }
+  )
+}</code></pre></div>
+<p>By threading the decomposition through a private constructor that takes a tuple, we can now avoid the spurious intermediate values getting incorporated into the class, and still enjoy the benefits of instantiation-site mix-ins. What’s more, there has been a bunch of talk on the Scala mailing list about a future unification of tuples with method (and hopefully constructor) parameters - in which event the extra private constructor could disappear entirely!</p>
+<p><em>migrated from http://logji.blogspot.com/2009/04/deconstructoring-scala.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2009-04-21-deconstructoring_scala.html";  
+    this.page.identifier = "/posts/2009-04-21-deconstructoring_scala.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>

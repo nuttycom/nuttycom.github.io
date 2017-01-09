@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - Composable Bindings in Lift</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Composable Bindings in Lift</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on September 29, 2009
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>I’ve been using <a href="http://liftweb.net">Lift</a> as the framework behind a small internal web application at my company for the past year or so. The experience has been generally positive, despite a few quibbles I have with how state is typically maintained and passed around within an application.</p>
+<p>Lift takes a “view first” approach to building web applications, as opposed to the commonly favored MVC pattern. In practice, “view first” boils down to essentially this: when you create an XHTML template for a page, that template will contain one or more XML tags where the name of the tag refers to a method to be called with the body of the tag as an argument. Such a method will return the XHTML to be substituted in place of the original tag and its contents. In Lift parlance such a method is called a “snippet,” and has the type NodeSeq =&gt; NodeSeq. In order to more fully understand the rest of this article, I recommend you read more about snippets <a href="http://liftweb.net/docs/getting_started/mod_master.html#x1-110002.5">here</a> if you’re not already familiar with them.</p>
+<p>The interesting thing about this signature is that functions with this type can easily be composed. What’s more, the method most frequently used to implement snippets, BindHelpers.bind, can be partially applied to its arguments to give a closure with the same signature.</p>
+<p>When I’m designing a website, most of the time rendering a page (or even a snippet within a page) isn’t about displaying the data from a single object - instead, I often want to render a whole object graph. Ideally, I want to be able to choose a rendering for each type of object I’m concerned with, then compose these elements to produce the final page. Templates for objects should be reusable and modular, and for any given page I should be able to pick between multiple renderings of any given object, in some places displaying a concise summary and elsewhere a detailed exposition of all the available data.</p>
+<p>Furthermore, while I believe that “the meaning should belong with the bytes” I also think that the rendering should be as decoupled from the bytes as possible to allow for maximum flexibility. Hence, I don’t want my model classes to have any sort of “render” method - the display is something that should be layered on above the semantics provided by the names and types of the members of the object.</p>
+<p>With these goals and composition in mind, I started with the following tiny bit of code:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">
+<span class="kw">import</span> net.<span class="fu">liftweb</span>.<span class="fu">http</span>.<span class="fu">TemplateFinder</span>.<span class="fu">findAnyTemplate</span>
+<span class="kw">import</span> net.<span class="fu">liftweb</span>.<span class="fu">util</span>.{Box,Full,Empty,Failure,Log}
+<span class="kw">import</span> scala.<span class="fu">xml</span>.<span class="fu">_</span>
+
+<span class="kw">object</span> Bindings {
+  <span class="kw">type</span> Binding = NodeSeq =&gt; NodeSeq
+
+  <span class="kw">type</span> DataBinding[T] = T =&gt; NodeSeq =&gt; NodeSeq
+
+  <span class="co">//adds a bind() function to an object if an implicit DataBinding is available for that object</span>
+  <span class="kw">implicit</span> <span class="kw">def</span> binder[T](t: T)(<span class="kw">implicit</span> binding: DataBinding[T]): Binder = <span class="fu">Binder</span>(<span class="fu">binding</span>(t))
+  <span class="kw">implicit</span> <span class="kw">def</span> <span class="fu">binder</span>(binding: Binding): Binder = <span class="fu">Binder</span>(binding)
+
+  <span class="co">//decorator for a binding function that allows it to be called as bind() rather than apply()</span>
+  <span class="co">//and also provides facilities for binding to a specific template</span>
+  <span class="kw">case</span> <span class="kw">class</span> <span class="fu">Binder</span>(<span class="kw">val</span> binding: Binding) {
+  <span class="kw">def</span> <span class="fu">bind</span>(xhtml: NodeSeq): NodeSeq = binding.<span class="fu">apply</span>(xhtml)
+    <span class="kw">def</span> <span class="fu">bind</span>(templatePath: List[String]): NodeSeq = {
+      <span class="fu">findAnyTemplate</span>(templatePath) map binding <span class="kw">match</span> {
+        <span class="kw">case</span> <span class="fu">Full</span>(xhtml) =&gt; xhtml
+        <span class="kw">case</span> <span class="fu">Failure</span>(msg, ex, _) =&gt; Text(ex.<span class="fu">map</span>(_.<span class="fu">getMessage</span>).<span class="fu">openOr</span>(msg))
+        <span class="kw">case</span> Empty =&gt; Text(<span class="st">&quot;Unable to find template with path &quot;</span> + templatePath.<span class="fu">mkString</span>(<span class="st">&quot;/&quot;</span>, <span class="st">&quot;/&quot;</span>, <span class="st">&quot;&quot;</span>))
+      }
+    }
+  }
+
+  <span class="kw">object</span> NullBinding <span class="kw">extends</span> Binding {
+    <span class="kw">override</span> <span class="kw">def</span> <span class="fu">apply</span>(xhtml : NodeSeq) : NodeSeq = NodeSeq.<span class="fu">Empty</span>
+  }
+
+  <span class="kw">object</span> StringBinding <span class="kw">extends</span> DataBinding[String] {
+    <span class="kw">override</span> <span class="kw">def</span> <span class="fu">apply</span>(msg: String) = (xhtml: NodeSeq) =&gt; Text(msg)
+  }
+
+  <span class="kw">implicit</span> <span class="kw">def</span> <span class="fu">path2list</span>(s: String) = <span class="kw">new</span> {
+    <span class="kw">def</span> path: List[String] = s.<span class="fu">split</span>(<span class="st">&quot;/&quot;</span>).<span class="fu">toList</span>
+  }
+}</code></pre></div>
+<p>The principle idea is that in my application, I will create one or more DataBinding instances for each of my model types, and that then by simply declaring an implicit val containing the instance I want in the narrowest scope possible, I can call .bind on any object for which an implicit DataBinding is available, or .binding if I want to compose multiple such binding functions and close over the model instance. Furthermore, this gives me good ways to compose both over composition and inheritance hierarchies, as I’ll show below.</p>
+<p>Consider that I have the following simplified, store-oriented model objects. In Lift, these would probably be implemented using Mapper or JPA - in the app that I’ve been working on, these are Java classes persisted by Hibernate - certainly not things that I want to change in order to support rendering by Scala.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">case</span> <span class="kw">class</span> <span class="fu">User</span>(fname: String, lname: String, email: String, joinedOn: DateTime)
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">Address</span>(
+  recipient: String, 
+  addr1: String, 
+  addr2: String, 
+  city: String, 
+  state: String, 
+  country: String, 
+  postalCode: String
+)
+
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">Product</span>(name: String, basePrice: BigDecimal, shippingCost: Option[BigDecimal])
+
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">OrderLine</span>(product: Product, quantity: Int)
+
+<span class="kw">class</span> <span class="fu">Order</span>(
+  <span class="kw">val</span> user: User, 
+  <span class="kw">val</span> placedOn: DateTime, 
+  <span class="kw">val</span> shipTo: Address, 
+  <span class="kw">var</span> items: List[OrderLine], 
+  <span class="kw">var</span> transactions: List[Transaction]
+)
+
+<span class="kw">sealed</span> <span class="kw">trait</span> State
+<span class="kw">object</span> PENDING <span class="kw">extends</span> State
+<span class="kw">object</span> IN_PROGRESS <span class="kw">extends</span> State
+<span class="kw">object</span> COMPLETE <span class="kw">extends</span> State
+<span class="kw">object</span> FAILED <span class="kw">extends</span> State
+<span class="kw">object</span> CANCELED <span class="kw">extends</span> State
+
+<span class="kw">abstract</span> <span class="kw">class</span> <span class="fu">Transaction</span>(<span class="kw">val</span> scheduledAt: DateTime, <span class="kw">val</span> completedAt: Option[DateTime], state: State)
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">AuthTransaction</span>(
+  cc: CreditCard, 
+  amount: BigDecimal, 
+  scheduledAt: DateTime, 
+  completedAt: Option[DateTime], 
+  state: State
+) <span class="kw">extends</span> <span class="fu">Transaction</span>(scheduledAt, completedAt)
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">CaptureTransaction</span>(auth: AuthTransaction, ...) <span class="kw">extends</span> <span class="fu">Transaction</span>(...)
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">ShipTransaction</span>(items: List[OrderLine], ...) <span class="kw">extends</span> <span class="fu">Transaction</span>(...)</code></pre></div>
+<p>With this set of models, I have a few different ways that they will be rendered - the display to the users will not be the same as the display to site administrators, I may (or may not) want to reuse the same rendering code for a line item in an order as in a shipping transaction, and so forth. Let’s take a look at how this ends up.</p>
+<p>First, I want to create some DataBinding objects for my classes that are built just on primitive types. Let’s start with User.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">
+<span class="kw">import</span> net.<span class="fu">liftweb</span>.<span class="fu">util</span>.<span class="fu">Helpers</span>.<span class="fu">_</span> <span class="co">//this is where BindHelpers.bind comes from</span>
+<span class="kw">import</span> scala.<span class="fu">xml</span>.<span class="fu">_</span>
+<span class="kw">import</span> Bindings.<span class="fu">_</span>
+
+<span class="kw">object</span> UserBinding <span class="kw">extends</span> DataBinding[User] {
+  <span class="kw">def</span> <span class="fu">apply</span>(user: User): Binding = <span class="fu">bind</span>(<span class="st">&quot;user&quot;</span>, _,
+    <span class="st">&quot;name&quot;</span> -&gt; Text(user.<span class="fu">fname</span>+<span class="st">&quot; &quot;</span>+user.<span class="fu">lname</span>),
+    <span class="st">&quot;email&quot;</span> -&gt; Text(user.<span class="fu">email</span>)
+  )
+}
+
+<span class="kw">object</span> MailingAddressBinding <span class="kw">extends</span> DataBinding[Address] {
+  <span class="kw">def</span> <span class="fu">apply</span>(addr: Address): Binding = <span class="fu">bind</span>(<span class="st">&quot;address&quot;</span>, _,
+    <span class="st">&quot;line1&quot;</span> -&gt; Text(addr.<span class="fu">recipient</span>),
+    <span class="st">&quot;line2&quot;</span> -&gt; Text(addr.<span class="fu">addr1</span>),
+    <span class="st">&quot;line3&quot;</span> -&gt; Text(addr.<span class="fu">addr2</span>),
+    <span class="st">&quot;line4&quot;</span> -&gt; Text(addr.<span class="fu">city</span>+<span class="st">&quot;, &quot;</span>+addr.<span class="fu">state</span>+<span class="st">&quot; &quot;</span>+addr.<span class="fu">postalCode</span>+<span class="st">&quot; &quot;</span>+addr.<span class="fu">country</span>)
+  )
+}
+
+<span class="kw">object</span> AdminAddressBinding <span class="kw">extends</span> DataBinding[Address] {
+  <span class="kw">def</span> <span class="fu">apply</span>(addr: Address): Binding = <span class="fu">bind</span>(<span class="st">&quot;address&quot;</span>, _,
+    <span class="st">&quot;recipient&quot;</span> -&gt; Text(addr.<span class="fu">recipient</span>),
+    <span class="co">// imagine more literal bindings like the previous one here</span>
+  )
+}
+
+<span class="kw">object</span> OrderLineBinding <span class="kw">extends</span> DataBinding[OrderLine] {
+  <span class="co">//more of the same</span>
+}</code></pre></div>
+<p>These implementations take advantage of partial application and the Scala type inferencer to turn the call to bind(…) into a closure with the type Binding, which is <code>NodeSeq =&gt; NodeSeq</code>. At this point, we’re not taking advantage of the fact that these functions can compose, so we’ll do so now a we build bindings for our more complex objects.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">
+<span class="co">//same imports as before</span>
+
+<span class="kw">trait</span> OrderBinding <span class="kw">extends</span> DataBinding[Order] {
+  <span class="kw">implicit</span> <span class="kw">val</span> userBinding: DataBinding[User]
+  <span class="kw">implicit</span> <span class="kw">val</span> addressBinding: DataBinding[Address]
+  <span class="kw">implicit</span> <span class="kw">val</span> lineBinding: DataBinding[OrderLine]
+  <span class="kw">implicit</span> <span class="kw">val</span> txnBinding: DataBinding[Transaction]
+
+  <span class="kw">def</span> <span class="fu">apply</span>(order: Order): Binding = (xhtml: NodeSeq) =&gt; {
+    <span class="kw">val</span> itemTemplate = <span class="fu">chooseTemplate</span>(<span class="st">&quot;order&quot;</span>, <span class="st">&quot;lineItem&quot;</span>, xhtml)
+    <span class="kw">val</span> txnTemplate = <span class="fu">chooseTemplate</span>(<span class="st">&quot;order&quot;</span>, <span class="st">&quot;transaction&quot;</span>, xhtml)
+
+    <span class="fu">bind</span>(
+      <span class="st">&quot;order&quot;</span>, xhtml,
+      <span class="st">&quot;user&quot;</span> -&gt; order.<span class="fu">user</span>.<span class="fu">bind</span>(<span class="st">&quot;templates-hidden/user/order-display&quot;</span>.<span class="fu">path</span>),
+      <span class="st">&quot;shipTo&quot;</span> -&gt; order.<span class="fu">shipTo</span>.<span class="fu">bind</span>(<span class="st">&quot;templates-hidden/address/order-display&quot;</span>.<span class="fu">path</span>),
+      <span class="st">&quot;lineItems&quot;</span> -&gt; order.<span class="fu">items</span>.<span class="fu">flatMap</span>(_.<span class="fu">bind</span>(itemTemplate)).<span class="fu">toSeq</span>,
+      <span class="st">&quot;transactions&quot;</span> -&gt; order.<span class="fu">transactions</span>.<span class="fu">flatMap</span>(_.<span class="fu">bind</span>(txnTemplate)).<span class="fu">toSeq</span>
+    )
+  }
+}</code></pre></div>
+<p>There’s a lot more going on in this one. First off, we define our DataBinding as a trait rather than a concrete object, in order to take advantage of abstract implicit val declarations. When we go to instantiate this trait, we will provide concrete implementations of the various bindings that we want applied to the objects from which an Order instance is composed. The compiler will then be able to apply the “binder” conversion to get a Binder instance which closes over the instance with the appropriate DataBinding so that we can simply call instance.bind and pass either a path to a template, or a chunk of XHTML extracted from the input with chooseTemplate to get our final value.</p>
+<p>To be continued…</p>
+<p><em>migrated from http://logji.blogspot.com/2009/09/composable-bindings-in-lift.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2009-09-29-composable_bindings_in_lift.html";  
+    this.page.identifier = "/posts/2009-09-29-composable_bindings_in_lift.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>

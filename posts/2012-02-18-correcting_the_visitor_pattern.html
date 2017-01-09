@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - Correcting the Visitor Pattern</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Correcting the Visitor Pattern</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on February 18, 2012
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>I’m writing this post because I want to address a problem that I see time and time again: people who are trying to figure out how to encode algebraic data types in languages that do not support them come up with <a href="http://shahriarhaque.com/blog/blog/structural-pattern-matching-using-exceptions/">all kinds of crazy solutions</a>. But, there is a simple and effective encoding of algebraic data types that everyone knows about, but had just been doing wrong: the Visitor pattern. At this point, I expect many devotees of functional programming to start screaming “but… mutability!!!” And, yes, the mutability required by the textbook definition of the Visitor pattern is indeed a major problem - the problem that I intend to show how to correct right here. The solution is remarkably simple. Here’s a tree traversal using the Visitor pattern, implemented <em>correctly</em> in Java:</p>
+<div class="sourceCode"><pre class="sourceCode java"><code class="sourceCode java"><span class="kw">public</span> <span class="kw">interface</span> Tree&lt;A&gt; {
+  <span class="kw">public</span> &lt;B&gt; B <span class="fu">accept</span>(TreeVisitor&lt;A, B&gt; v);
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Empty&lt;A&gt; <span class="kw">implements</span> Tree&lt;A&gt; {
+  <span class="kw">public</span> &lt;B&gt; B <span class="fu">accept</span>(TreeVisitor&lt;A, B&gt; v) {
+    <span class="kw">return</span> v.<span class="fu">visitEmpty</span>();
+  }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Leaf&lt;A&gt; <span class="kw">implements</span> Tree&lt;A&gt; {
+  <span class="kw">public</span> <span class="dt">final</span> A value;
+
+  <span class="kw">public</span> <span class="fu">Leaf</span>(A value) {
+    <span class="kw">this</span>.<span class="fu">value</span> = value;
+  }
+
+  <span class="kw">public</span> &lt;B&gt; B <span class="fu">accept</span>(TreeVisitor&lt;A, B&gt; v) {
+    <span class="kw">return</span> v.<span class="fu">visitLeaf</span>(<span class="kw">this</span>);
+  }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Node&lt;A&gt; <span class="kw">implements</span> Tree&lt;A&gt; {
+  <span class="kw">public</span> <span class="dt">final</span> Tree&lt;A&gt; left;
+  <span class="kw">public</span> <span class="dt">final</span> Tree&lt;A&gt; right;
+
+  <span class="kw">public</span> Node(Tree&lt;A&gt; left, Tree&lt;A&gt; right) {
+    <span class="kw">this</span>.<span class="fu">left</span> = left;
+    <span class="kw">this</span>.<span class="fu">right</span> = right;
+  }
+
+  <span class="kw">public</span> &lt;B&gt; B <span class="fu">accept</span>(TreeVisitor&lt;A, B&gt; v) {
+    <span class="kw">return</span> v.<span class="fu">visitNode</span>(<span class="kw">this</span>);
+  }
+}
+
+<span class="kw">public</span> <span class="kw">interface</span> TreeVisitor&lt;A, B&gt; {
+  <span class="kw">public</span> B <span class="fu">visitEmpty</span>();
+  <span class="kw">public</span> B <span class="fu">visitLeaf</span>(Leaf&lt;A&gt; t);
+  <span class="kw">public</span> B <span class="fu">visitNode</span>(Node&lt;A&gt; t);
+}</code></pre></div>
+<p>This is exactly the traditional Visitor pattern, with one minor variation: the <code>accept</code> method is generic (parametrically polymorphic), returning whatever return type is defined by a particular <code>TreeVisitor</code> instance instead of void. This is a vitally important distinction; by making accept polymorphic and non-void returning, it allows you to escape the curse of being forced to rely on mutability to accumulate a result. Here’s an example of the implementation of the <code>depth</code> method from the previously mentioned blog post, and an example of its use. You’ll note that no mutable variables were harmed (or indeed used) in the creation of this example:</p>
+<div class="sourceCode"><pre class="sourceCode java"><code class="sourceCode java"><span class="kw">public</span> <span class="kw">class</span> TreeUtil {
+  <span class="kw">public</span> <span class="dt">static</span> <span class="dt">final</span> &lt;A&gt; TreeVisitor&lt;A, Integer&gt; <span class="fu">depth</span>() {
+    <span class="kw">return</span> <span class="kw">new</span> TreeVisitor&lt;A, Integer&gt;() {
+      <span class="kw">public</span> Integer <span class="fu">visitEmpty</span>() {
+        <span class="kw">return</span> <span class="dv">0</span>;
+      }
+
+      <span class="kw">public</span> Integer <span class="fu">visitLeaf</span>(Leaf&lt;A&gt; t) {
+        <span class="kw">return</span> <span class="dv">1</span>;
+      }
+
+      <span class="kw">public</span> Integer <span class="fu">visitNode</span>(Node&lt;A&gt; t) {
+        <span class="dt">int</span> leftDepth = t.<span class="fu">left</span>.<span class="fu">accept</span>(<span class="kw">this</span>);
+        <span class="dt">int</span> rightDepth = t.<span class="fu">right</span>.<span class="fu">accept</span>(<span class="kw">this</span>);
+        <span class="kw">return</span> (leftDepth &gt; rightDepth) ? leftDepth + <span class="dv">1</span> : rightDepth + <span class="dv">1</span>;
+      }
+    };
+  }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Example {
+  <span class="kw">public</span> <span class="dt">static</span> <span class="dt">void</span> <span class="fu">main</span>(String[] argv) {
+    Tree&lt;String&gt; leftBiased = <span class="kw">new</span> Node&lt;String&gt;(
+      <span class="kw">new</span> Node&lt;String&gt;(
+        <span class="kw">new</span> Node&lt;String&gt;(
+          <span class="kw">new</span> Leaf&lt;String&gt;(<span class="st">&quot;hello&quot;</span>),
+          <span class="kw">new</span> Empty&lt;String&gt;()
+        ),
+        <span class="kw">new</span> Leaf&lt;String&gt;(<span class="st">&quot;world&quot;</span>)
+      ),
+      <span class="kw">new</span> Empty&lt;String&gt;()
+    );
+
+    <span class="fu">assert</span>(leftBiased.<span class="fu">accept</span>(TreeUtil.&lt;String&gt;<span class="fu">depth</span>()) == <span class="dv">3</span>);
+  }
+}</code></pre></div>
+<p>TreeVisitor encodes the <em>f-algebra</em> for the Tree data type; the accept method is the <em>catamorphism</em> for Tree. Moreover, given this definition, you can also see that <a href="./2009-12-08-monadic_visitor.html">the visitor forms a monad</a> (example in Scala), giving rise to lots of nice compositional properties. Implemented in this fashion, Visitor is actually nothing more (and nothing less) than a multiple dispatch function over the algebraic data type in question. So stop returning void from your visitors, and ramp up their power in the process!</p>
+<p><em>migrated from http://logji.blogspot.com/2012/02/correcting-visitor-pattern.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2012-02-18-correcting_the_visitor_pattern.html";  
+    this.page.identifier = "/posts/2012-02-18-correcting_the_visitor_pattern.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>

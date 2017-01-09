@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - Keyword Escape in Scala</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>Keyword Escape in Scala</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on February  5, 2010
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>James Iry just mentioned something I’d never noticed before in #scala:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">scala&gt; <span class="kw">def</span> <span class="fu">f</span>(i: Int, x: Int) = i <span class="kw">match</span> { <span class="kw">case</span> `x` =&gt; <span class="fu">println</span>(<span class="st">&quot;x!&quot;</span>); <span class="kw">case</span> _ =&gt; <span class="fu">println</span>(<span class="st">&quot;nope&quot;</span>) }
+f: (i: Int,x: Int)Unit
+
+scala&gt; <span class="fu">f</span>(<span class="dv">1</span>, <span class="dv">1</span>)
+x!
+
+scala&gt; <span class="fu">f</span>(<span class="dv">1</span>, <span class="dv">2</span>)
+nope</code></pre></div>
+<p>That’s one of those things that I’d idly wondered how to do, but hadn’t had a use case so hadn’t really gone looking. Good to know it’s possible and simple… and more or less makes sense. More or less. Actually, I guess I’m kind of glad that the following doesn’t compile:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">scala&gt; <span class="kw">def</span> <span class="fu">f</span>(i: Int) = i <span class="kw">match</span> { <span class="kw">case</span> `yield` =&gt; <span class="fu">println</span>(`yield`) }
+&lt;console&gt;:<span class="dv">4</span>: error: not found: value <span class="kw">yield</span>
+       <span class="kw">def</span> <span class="fu">f</span>(i: Int) = i <span class="kw">match</span> { <span class="kw">case</span> `yield` =&gt; <span class="fu">println</span>(`yield`) }</code></pre></div>
+<p>I can live with the restriction as not being able to use a reserved word for a variable on the lhs of a pattern match, though it does make for a weird inconsistency:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">scala&gt; <span class="kw">val</span> (`yield`, x) = (<span class="dv">1</span>, <span class="dv">1</span>)
+&lt;console&gt;:<span class="dv">4</span>: error: not found: value <span class="kw">yield</span>
+       <span class="kw">val</span> (`yield`, x) = (<span class="dv">1</span>, <span class="dv">1</span>)
+            ^
+
+scala&gt; <span class="kw">val</span> `yield` = <span class="dv">1</span>
+<span class="kw">yield</span>: Int = <span class="dv">1</span></code></pre></div>
+<p>Chalk up one more to the box of “pain points caused by using pattern matching for parallel assignment.”</p>
+<p><em>migrated from http://logji.blogspot.com/2010/02/trick-of-day.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2010-02-05-keyword_escape.html";  
+    this.page.identifier = "/posts/2010-02-05-keyword_escape.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>

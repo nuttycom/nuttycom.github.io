@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - The Catamorphism Challenge</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>The Catamorphism Challenge</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on December  2, 2009
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>My solution to Tony’s <a href="http://blog.tmorris.net/debut-with-a-catamorphism/">catamorphism challenge</a>:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> MyOption[+A] {
+  <span class="kw">import</span> MyOption.<span class="fu">_</span>
+
+  <span class="kw">def</span> cata[X](some: A =&gt; X, none: =&gt; X): X
+  <span class="kw">def</span> map[B](f: A =&gt; B): MyOption[B] = <span class="fu">cata</span>(a =&gt; <span class="fu">some</span>(<span class="fu">f</span>(a)), none[B])
+  <span class="kw">def</span> flatMap[B](f: A =&gt; MyOption[B]): MyOption[B] = <span class="fu">cata</span>(f, none[B])
+  <span class="kw">def</span> getOrElse[AA &gt;: A](e: =&gt; AA): AA = <span class="fu">cata</span>(a =&gt; a, e)
+  <span class="kw">def</span> <span class="fu">filter</span>(p: A =&gt; Boolean): MyOption[A] = <span class="fu">cata</span>(a =&gt; <span class="kw">if</span> <span class="fu">p</span>(a) <span class="fu">some</span>(a) <span class="kw">else</span> none[A], <span class="kw">this</span>)
+  <span class="kw">def</span> <span class="fu">foreach</span>(f: A =&gt; Unit): Unit = <span class="fu">cata</span>(f, ())
+  <span class="kw">def</span> isDefined: Boolean = <span class="fu">cata</span>(_ =&gt; <span class="kw">true</span>, <span class="kw">false</span>)
+  <span class="kw">def</span> isEmpty: Boolean = <span class="fu">cata</span>(_ =&gt; <span class="kw">false</span>, <span class="kw">true</span>)
+  <span class="kw">def</span> get: A = <span class="fu">cata</span>(a =&gt; a, <span class="fu">error</span>(<span class="st">&quot;get on none&quot;</span>))
+  <span class="kw">def</span> orElse[AA &gt;: A](o: MyOption[AA]): MyOption[AA] = <span class="fu">cata</span>(a =&gt; <span class="fu">some</span>(a), o)
+  <span class="kw">def</span> toLeft[X](right: =&gt; X): Either[A, X] = <span class="fu">cata</span>(a =&gt; <span class="fu">Left</span>(a), <span class="fu">Right</span>(right))
+  <span class="kw">def</span> toRight[X](left: =&gt; X): Either[X, A] = <span class="fu">cata</span>(a =&gt; <span class="fu">Right</span>(a), <span class="fu">Left</span>(left))
+  <span class="kw">def</span> toList: List[A] = <span class="fu">cata</span>(a =&gt; List(a), Nil)
+  <span class="kw">def</span> iterator: Iterator[A] = toList.<span class="fu">elements</span>
+}
+
+<span class="kw">object</span> MyOption {
+  <span class="kw">def</span> none[A] = <span class="kw">new</span> MyOption[A] {
+    <span class="kw">def</span> cata[X](s: A =&gt; X, n: =&gt; X) = n
+  }
+
+  <span class="kw">def</span> some[A](a: A) = <span class="kw">new</span> MyOption[A] {
+    <span class="kw">def</span> cata[X](s: A =&gt; X, n: =&gt; X) = <span class="fu">s</span>(a)
+  }
+}</code></pre></div>
+<p><em>migrated from http://logji.blogspot.com/2009/12/catamorphisms-easy-peasy.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2009-12-02-option_cata.html";  
+    this.page.identifier = "/posts/2009-12-02-option_cata.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - A Monadic Visitor</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>A Monadic Visitor</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on December  8, 2009
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>This Reader-esque monad emerged from my code this morning:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> A {
+  <span class="kw">def</span> accept[T](v: V[T]): T
+}
+
+<span class="kw">class</span> <span class="fu">B</span>(<span class="kw">val</span> s: String) <span class="kw">extends</span> A {
+  <span class="kw">var</span> i = <span class="dv">0</span>
+  <span class="kw">override</span> <span class="kw">def</span> accept[T](v: V[T]): T = v.<span class="fu">visit</span>(<span class="kw">this</span>)
+}
+
+<span class="kw">class</span> <span class="fu">C</span>(<span class="kw">val</span> s: String) <span class="kw">extends</span> A {
+  <span class="kw">var</span> i = <span class="dv">0</span>
+  <span class="kw">override</span> <span class="kw">def</span> accept[T](v: V[T]): T = v.<span class="fu">visit</span>(<span class="kw">this</span>)
+}
+
+<span class="kw">class</span> <span class="fu">D</span>(<span class="kw">val</span> s: String) <span class="kw">extends</span> A {
+  <span class="kw">var</span> i = <span class="dv">0</span>
+  <span class="kw">override</span> <span class="kw">def</span> accept[T](v: V[T]): T = v.<span class="fu">visit</span>(<span class="kw">this</span>)
+}
+
+<span class="kw">trait</span> V[T] { outer =&gt;
+  <span class="kw">def</span> <span class="fu">visit</span>(b: B): T
+  <span class="kw">def</span> <span class="fu">visit</span>(c: C): T
+  <span class="kw">def</span> <span class="fu">visit</span>(d: D): T
+
+  <span class="kw">def</span> map[U](f: T =&gt; U): V[U] = <span class="kw">new</span> V[U] {
+    <span class="kw">def</span> <span class="fu">visit</span>(b: B): U = <span class="fu">f</span>(outer.<span class="fu">visit</span>(b))
+    <span class="kw">def</span> <span class="fu">visit</span>(c: C): U = <span class="fu">f</span>(outer.<span class="fu">visit</span>(c))
+    <span class="kw">def</span> <span class="fu">visit</span>(d: D): U = <span class="fu">f</span>(outer.<span class="fu">visit</span>(d))
+  }
+
+  <span class="kw">def</span> flatMap[U](f: T =&gt; V[U]): V[U]= <span class="kw">new</span> V[U] {
+    <span class="kw">def</span> <span class="fu">visit</span>(b: B): U = <span class="fu">f</span>(outer.<span class="fu">visit</span>(b)).<span class="fu">visit</span>(b)
+    <span class="kw">def</span> <span class="fu">visit</span>(c: C): U = <span class="fu">f</span>(outer.<span class="fu">visit</span>(c)).<span class="fu">visit</span>(c)
+    <span class="kw">def</span> <span class="fu">visit</span>(d: D): U = <span class="fu">f</span>(outer.<span class="fu">visit</span>(d)).<span class="fu">visit</span>(d)
+  }
+}
+
+<span class="kw">object</span> V {
+  <span class="kw">def</span> pure[T](t: T): V[T] = <span class="kw">new</span> V[T] {
+    <span class="kw">def</span> <span class="fu">visit</span>(b: B) = t
+    <span class="kw">def</span> <span class="fu">visit</span>(c: C) = t
+    <span class="kw">def</span> <span class="fu">visit</span>(d: D) = t
+  }
+}</code></pre></div>
+<p>To figure out whether I’d done it right, I just implemented a little test to see if the machinery got the effects in the right order:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Test {
+  <span class="kw">def</span> <span class="fu">main</span>(argv: Array[String]) {
+    <span class="kw">class</span> <span class="fu">VI</span>(i: Int) <span class="kw">extends</span> V[Int] {
+      <span class="kw">def</span> <span class="fu">visit</span>(b: B) = <span class="fu">error</span>(<span class="st">&quot;not supported&quot;</span>)
+
+      <span class="kw">def</span> <span class="fu">visit</span>(c: C) = {
+        <span class="fu">println</span>(<span class="st">&quot;vi: &quot;</span> + c.<span class="fu">s</span> + <span class="st">&quot; = &quot;</span> + c.<span class="fu">i</span>)
+        c.<span class="fu">i</span> = c.<span class="fu">i</span> + i
+        c.<span class="fu">i</span>
+      }
+
+      <span class="kw">def</span> <span class="fu">visit</span>(d: D) = {
+        <span class="fu">println</span>(<span class="st">&quot;vi: &quot;</span> + d.<span class="fu">s</span> + <span class="st">&quot; = &quot;</span> + d.<span class="fu">i</span>)
+        d.<span class="fu">i</span> = d.<span class="fu">i</span> + i
+        d.<span class="fu">i</span>
+      }
+    }
+
+    <span class="kw">def</span> <span class="fu">f</span>(i: Int): V[Int] = {
+      <span class="fu">println</span>(<span class="st">&quot;f: &quot;</span> + i)
+      <span class="kw">new</span> <span class="fu">VI</span>(i)
+    }
+
+    <span class="kw">def</span> <span class="fu">g</span>(i: Int): V[Int] = {
+      <span class="fu">println</span>(<span class="st">&quot;g: &quot;</span> + i)
+      <span class="kw">new</span> <span class="fu">VI</span>(i)
+    }
+
+    <span class="kw">val</span> c1: A = <span class="kw">new</span> <span class="fu">C</span>(<span class="st">&quot;c1&quot;</span>)
+    <span class="kw">val</span> c2: A = <span class="kw">new</span> <span class="fu">C</span>(<span class="st">&quot;c2&quot;</span>)
+    <span class="kw">val</span> d1: A = <span class="kw">new</span> <span class="fu">D</span>(<span class="st">&quot;d1&quot;</span>)
+    <span class="kw">val</span> v = <span class="kw">new</span> <span class="fu">VI</span>(<span class="dv">1</span>)
+    <span class="fu">println</span>(c1.<span class="fu">accept</span>(v.<span class="fu">flatMap</span>(f).<span class="fu">flatMap</span>(g)))
+    <span class="fu">println</span>(c2.<span class="fu">accept</span>(v.<span class="fu">flatMap</span>(x =&gt; <span class="fu">f</span>(x).<span class="fu">flatMap</span>(g))))
+    <span class="fu">println</span>(d1.<span class="fu">accept</span>(v.<span class="fu">flatMap</span>(f).<span class="fu">flatMap</span>(g).<span class="fu">flatMap</span>(f).<span class="fu">flatMap</span>(g)))
+  }
+}</code></pre></div>
+<p>As far as I can tell, this satisfies the monad laws. Am I missing anything? If not, this is the first monad I’ve “found in the wild!”</p>
+<p><em>migrated from http://logji.blogspot.com/2009/12/reader-monad-for-visitor-pattern.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2009-12-08-monadic_visitor.html";  
+    this.page.identifier = "/posts/2009-12-08-monadic_visitor.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - A monad for failure-tolerant computations</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>A monad for failure-tolerant computations</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on July 29, 2010
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <p>I was working on a problem today where some of the computations could fail, but degrade gracefully while providing information about how exactly they failed so that clients could choose whether or not to use the result. This is what I came up with:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="co">/**</span>
+<span class="co"> * A monad used to entrain computations on a value that might fail.</span>
+<span class="co"> * This is distinct from Either in that it allows computations to continue</span>
+<span class="co"> * in the presence of errors, with the possibility of a degraded result.</span>
+<span class="co"> * The user of the result can then decide its suitability for use based upon</span>
+<span class="co"> * any errors that might be returned. Errors must form a semigroup.</span>
+<span class="co"> */</span>
+<span class="kw">sealed</span> <span class="kw">trait</span> Attempt[E, +A] {
+  <span class="kw">def</span> value: A
+  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B]
+  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B]
+
+  <span class="kw">def</span> error: Option[E]
+  <span class="kw">def</span> either: Either[E, A]
+}
+
+<span class="kw">case</span> <span class="kw">class</span> Success[E, +A](value: A) <span class="kw">extends</span> Attempt[E, A] {
+  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B] = <span class="fu">Success</span>(<span class="fu">f</span>(value))
+  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B] = <span class="fu">f</span>(value)
+  <span class="kw">def</span> error = None
+  <span class="kw">def</span> either = <span class="fu">Right</span>(value)
+}
+
+<span class="kw">case</span> <span class="kw">class</span> Failure[E, +A](err: E, value: A)(<span class="kw">implicit</span> append: (E, E) =&gt; E) <span class="kw">extends</span> Attempt[E, A] {
+  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B] = <span class="fu">Failure</span>(err, <span class="fu">f</span>(value))
+  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B] = <span class="fu">f</span>(value) <span class="kw">match</span> {
+    <span class="kw">case</span> <span class="fu">Failure</span>(e, b) =&gt; <span class="fu">Failure</span>(<span class="fu">append</span>(e, err), b)
+    <span class="kw">case</span> <span class="fu">Success</span>(b)   =&gt; <span class="fu">Failure</span>(err, b)
+  }
+
+  <span class="kw">def</span> error = Some(err)
+  <span class="kw">def</span> either = <span class="fu">Left</span>(err)
+}</code></pre></div>
+<p>Pretty trivial, but maybe occasionally useful. Here’s how it looks in my code:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">def</span> <span class="fu">mergeComponents</span>(f: String =&gt; JSONReport): Attempt[List[String], JSONReport] = {
+  components.<span class="fu">map</span>(f).<span class="fu">map</span>(_.<span class="fu">mergeComponents</span>(f)).<span class="fu">foldLeft</span>[Attempt[List[String], JSONReport]](<span class="fu">Success</span>(<span class="kw">this</span>)) {
+    (result, comp) =&gt; <span class="kw">for</span> {
+      cur &lt;- result
+      jr  &lt;- comp
+      properties     &lt;- <span class="fu">mergeProperties</span>(cur, jr)
+      queries        &lt;- <span class="fu">mergeQueries</span>(cur, jr)
+      dataAliases    &lt;- <span class="fu">mergeAliases</span>(cur, jr, queries.<span class="fu">values</span>)
+      dataTransforms &lt;- <span class="fu">mergeTransforms</span>(cur, jr, dataAliases.<span class="fu">values</span>)
+      dataMailers    &lt;- <span class="fu">mergeMailers</span>(cur, jr, dataTransforms.<span class="fu">values</span>)
+    } <span class="kw">yield</span> {
+      <span class="fu">JSONReport</span>(
+        cur.<span class="fu">reportId</span>, cur.<span class="fu">active</span>, cur.<span class="fu">version</span>, properties,
+        queries, dataAliases, dataTransforms, dataMailers,
+        cur.<span class="fu">dataRange</span>, Nil
+      )
+    }
+  }
+}</code></pre></div>
+<p>Here each of the various mergeX methods return an <code>Attempt[List[String], X]</code> where <code>X</code> is something needed to build the ultimate report. Here I’m just aggregating lists of strings describing the errors, but of course any type for which <code>(E, E) =&gt; E</code> is defined would work.</p>
+<p>Attempt. For all those times where you want a monad that says, “Hey, I maybe couldn’t get exactly what you asked for. Maybe it’s little broken, maybe it won’t work right, but this the best I could do. You decide.”</p>
+<p><strong>EDIT:</strong></p>
+<p>After a bit of thinking, I realized that this monad is really more general than being simply related to success or failure - it simply models a function that may or may not produce some additional metadata about its result. Then a lightbulb went off, and quick google search confirmed… yup, I just reinvented the <a href="http://www.haskell.org/all_about_monads/html/writermonad.html">writer monad</a>.<br />
+It’s not <em>exactly</em> like Writer, because it just requires a semigroup for E instead of a monoid, and the presence of a “log” is optional, so maybe it’s better suited than Writer for a few instances.</p>
+<p>The one really nice thing about rediscovering well-known concepts is that doing the derivation for yourself, in the context of some real problem, gives you a much more complete understanding of where the thing you reintevented is applicable!</p>
+<p>Inspired by michid’s example in the comments below, here’s a simpler example that demonstrates some utility his doesn’t quite capture.</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">implicit</span> <span class="kw">val</span> append = (l1: List[String], l2: List[String]) =&gt; l1 ::: l2
+
+<span class="kw">def</span> <span class="fu">succ</span>(s: String) = Success[List[String], String](<span class="st">&quot;result: success&quot;</span>)
+<span class="kw">val</span> fail: String =&gt; Attempt[List[String], String] = {
+  <span class="kw">var</span> count = <span class="dv">0</span>
+  (s: String) =&gt; {
+    count += <span class="dv">1</span>
+    <span class="fu">Failure</span>(List(<span class="st">&quot;failure &quot;</span> + count), s + <span class="st">&quot; then failure&quot;</span>)
+  }
+}
+
+<span class="kw">val</span> r = <span class="kw">for</span> {
+  x &lt;- <span class="fu">succ</span>(<span class="st">&quot;here we go!&quot;</span>)
+  y &lt;- <span class="fu">fail</span>(x)
+  z &lt;- <span class="fu">fail</span>(y)
+} <span class="kw">yield</span> z
+
+<span class="fu">println</span>(r)</code></pre></div>
+<p>This results in:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="fu">Failure</span>(List(failure <span class="dv">2</span>, failure <span class="dv">1</span>),result: success then failure then failure)</code></pre></div>
+<p><em>migrated from http://logji.blogspot.com/2010/07/monad-for-failure-tolerant-computations.html </em></p>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2010-07-29-failure_tolerant_monad.html";  
+    this.page.identifier = "/posts/2010-07-29-failure_tolerant_monad.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>
