@@ -45,20 +45,20 @@
 <p>I think that ‘classify’ captures much better the sense of what we’re doing when we define the implementation of a typeclass for a particular type. We are (ideally) stating that the that type is usable in a small set of functions that relate to one another by a set of laws. The fact that this can be though of as implicit dictionary passing, and the fact that implementing a typeclass for a type <em>looks</em> like overloading, is somewhat irrelevant.</p>
 <p>When we define, for example the implementation of the Monad typeclass for Maybe, we make values of type <code>Maybe a</code> usable by the <code>(&gt;&gt;=)</code> function, and make it possible for <code>return</code> to lift values of type <code>a</code> into values of type <code>Maybe a</code>. Notice that you can’t call the <code>Mabye.(&gt;&gt;=)</code> function explicitly - this is because the <code>(&gt;&gt;=)</code> defined inside of the <code>instance Monad Maybe where...</code> block isn’t actually a function in its own right! It is simply a statement of how values of type <code>Maybe a</code> behave in the context of <code>Monad.(&gt;&gt;=)</code>, which <em>is</em> a first-class, polymorphic function with a restricted set of possible inputs.</p>
 <p>A practice that I have adopted in my Haskell code that helps clarify this distinction is that I never write the implementation of any typeclass function for a type within the body of the ‘instance’ block. For example, instead of this:</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">Maybe</span> <span class="kw">where</span>
-  (<span class="dt">Just</span> a) <span class="fu">&gt;&gt;=</span> f <span class="fu">=</span> f a
-  <span class="dt">Nothing</span> <span class="fu">&gt;&gt;=</span> f <span class="fu">=</span> <span class="dt">Nothing</span>
-
-  return a <span class="fu">=</span> <span class="dt">Just</span> a</code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">Maybe</span> <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a>  (<span class="dt">Just</span> a) <span class="op">&gt;&gt;=</span> f <span class="ot">=</span> f a</span>
+<span id="cb1-3"><a href="#cb1-3"></a>  <span class="dt">Nothing</span> <span class="op">&gt;&gt;=</span> f <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a></span>
+<span id="cb1-5"><a href="#cb1-5"></a>  <span class="fu">return</span> a <span class="ot">=</span> <span class="dt">Just</span> a</span></code></pre></div>
 <p>I consider it better to write this:</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">bindMaybe (<span class="dt">Just</span> a) f <span class="fu">=</span> f a
-bindMaybe <span class="dt">Nothing</span> <span class="fu">=</span> <span class="dt">Nothing</span>
-
-pureMaybe a <span class="fu">=</span> <span class="dt">Just</span> a 
-
-<span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">Maybe</span> <span class="kw">where</span>
-  (<span class="fu">&gt;&gt;=</span>) <span class="fu">=</span> bindMaybe
-  return <span class="fu">=</span> pureMaybe</code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1"></a>bindMaybe (<span class="dt">Just</span> a) f <span class="ot">=</span> f a</span>
+<span id="cb2-2"><a href="#cb2-2"></a>bindMaybe <span class="dt">Nothing</span> <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a>pureMaybe a <span class="ot">=</span> <span class="dt">Just</span> a </span>
+<span id="cb2-5"><a href="#cb2-5"></a></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="kw">instance</span> <span class="dt">Monad</span> <span class="dt">Maybe</span> <span class="kw">where</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a>  (<span class="op">&gt;&gt;=</span>) <span class="ot">=</span> bindMaybe</span>
+<span id="cb2-8"><a href="#cb2-8"></a>  <span class="fu">return</span> <span class="ot">=</span> pureMaybe</span></code></pre></div>
 <p>This makes it clearer that we’re defining what <code>(&gt;&gt;=)</code> and <code>return</code> mean in the context of the <code>Maybe</code> type, and not just creating another implementation of some functions named <code>(&gt;&gt;=)</code> and <code>return</code>.</p>
 <p>Something important to note here is that the in the definition of the <code>Monad</code> typeclass, all of the available type variables are abstract. We have no additional structure that we can use to inspect obedience to the monad laws - we are forced to to rely entirely on parametricity (and the unenforced monad laws, which we at present must simply trust will be obeyed by the implementer) when reasoning about the behavior of any application of <code>(&gt;&gt;=)</code> or <code>return</code>.</p>
 <p>Compare this now to my favorite whipping-child typeclasses, <code>FromJSON</code> and <code>ToJSON</code>. These “typeclasses” (though not worthy of the name) expose the <code>Value</code> type directly in their functions, and consequently destroy our ability to reason parametrically. Even if we combined these typeclasses to create a new <code>SerializeJSON</code> class, we’d still be simply using the typeclass mechanism to allow us to overload a bunch of function names, and we’re in fact limited by the fact that we can’t easily refer to the <code>MyType.parseJSON</code> function directly - and if we want to refer just to that capability for a type, we’re forced into capturing the <code>FromJSON</code> typeclass instance existentially, which is widely (and appropriately) considered a bad idea.</p>

@@ -37,80 +37,80 @@
   </div>
 
   <p>This post is intended to address a question that I seem to see come up every few months on the Scala mailing list or the #scala IRC channel on freenode. The question is often posed in terms of the phrase “recursive type” and usually involves someone having some difficulty or other (and <em>many</em> arise) with a construction like this:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> Account[T &lt;: Account[T]] {
-  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal): T
-}
-
-<span class="kw">class</span> <span class="fu">BrokerageAccount</span>(total: BigDecimal) <span class="kw">extends</span> Account[BrokerageAccount] {
-  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal) = <span class="kw">new</span> <span class="fu">BrokerageAccount</span>(total + amount)
-}
-
-<span class="kw">class</span> <span class="fu">SavingsAccount</span>(total: BigDecimal) <span class="kw">extends</span> Account[SavingsAccount] {
-  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal) = <span class="kw">new</span> <span class="fu">SavingsAccount</span>(total + amount)
-}</code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">trait</span> Account[T &lt;: Account[T]] {</span>
+<span id="cb1-2"><a href="#cb1-2"></a>  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal): T</span>
+<span id="cb1-3"><a href="#cb1-3"></a>}</span>
+<span id="cb1-4"><a href="#cb1-4"></a></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="kw">class</span> <span class="fu">BrokerageAccount</span>(total: BigDecimal) <span class="kw">extends</span> Account[BrokerageAccount] {</span>
+<span id="cb1-6"><a href="#cb1-6"></a>  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal) = <span class="kw">new</span> <span class="fu">BrokerageAccount</span>(total + amount)</span>
+<span id="cb1-7"><a href="#cb1-7"></a>}</span>
+<span id="cb1-8"><a href="#cb1-8"></a></span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="kw">class</span> <span class="fu">SavingsAccount</span>(total: BigDecimal) <span class="kw">extends</span> Account[SavingsAccount] {</span>
+<span id="cb1-10"><a href="#cb1-10"></a>  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal) = <span class="kw">new</span> <span class="fu">SavingsAccount</span>(total + amount)</span>
+<span id="cb1-11"><a href="#cb1-11"></a>}</span></code></pre></div>
 <p>This sort of self-referential type constraint is known formally as <a href="http://www.cs.utexas.edu/~wcook/papers/FBound89/CookFBound89.pdf">F-bounded type polymorphism</a> and is usually attempted when someone is trying to solve a common problem of abstraction in object-oriented languages; how to define a polymorphic function that, though defined in terms of a supertype, will when passed a value of some subtype will always return a value of the same subtype as its argument.</p>
 <p>It’s an interesting construct, but there are some subtleties that can trip up the unwary user, and which make naive or incautious use of the pattern problematic. The first issue that must be dealt with is how to properly refer to the abstract supertype, rather than some specific subtype. Let’s begin with a simple example; let’s say that we need a function that, given an account, will apply a transaction fee for adding funds below a certain threshold.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Account {
-  <span class="kw">val</span> feePercentage = BigDecimal(<span class="st">&quot;0.02&quot;</span>)
-  <span class="kw">val</span> feeThreshold = BigDecimal(<span class="st">&quot;10000.00&quot;</span>)
-
-  <span class="kw">def</span> deposit[T &lt;: Account[T]](amount: BigDecimal, account: T): T = {
-    <span class="kw">if</span> (amount &lt; feeThreshold) account.<span class="fu">addFunds</span>(amount - (amount * feePercentage))
-    <span class="kw">else</span> account.<span class="fu">addFunds</span>(amount)
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">object</span> Account {</span>
+<span id="cb2-2"><a href="#cb2-2"></a>  <span class="kw">val</span> feePercentage = BigDecimal(<span class="st">&quot;0.02&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a>  <span class="kw">val</span> feeThreshold = BigDecimal(<span class="st">&quot;10000.00&quot;</span>)</span>
+<span id="cb2-4"><a href="#cb2-4"></a></span>
+<span id="cb2-5"><a href="#cb2-5"></a>  <span class="kw">def</span> deposit[T &lt;: Account[T]](amount: BigDecimal, account: T): T = {</span>
+<span id="cb2-6"><a href="#cb2-6"></a>    <span class="kw">if</span> (amount &lt; feeThreshold) account.<span class="fu">addFunds</span>(amount - (amount * feePercentage))</span>
+<span id="cb2-7"><a href="#cb2-7"></a>    <span class="kw">else</span> account.<span class="fu">addFunds</span>(amount)</span>
+<span id="cb2-8"><a href="#cb2-8"></a>  }</span>
+<span id="cb2-9"><a href="#cb2-9"></a>}</span></code></pre></div>
 <p>This is straightforward; the type bound is enforced via polymorphism at the call site. You’ll notice that the type ascribed to the <code>account</code> argument is <code>T</code>, and not <code>Account[T]</code> - the bound on <code>T</code> gives us all the constraints that we want. This does what we want it to do when we’re talking about working with one account at a time. But, what if we want instead to perform some action with a collection of accounts of varying types; suppose we need a method to debit all of a customer’s accounts for a maintenance fee? We can expect our type bounds to hold, but things begin to get a little complicated; we’re forced to use bounded existential types. Here is the correct way to do so:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Account {
-  <span class="kw">def</span> <span class="fu">debitAll</span>(amount: BigDecimal, accounts: List[T <span class="kw">forSome</span> { <span class="kw">type</span> T &lt;: Account[T] }]): List[T <span class="kw">forSome</span> { <span class="kw">type</span> T &lt;: Account[T] }] = {
-    accounts map { _.<span class="fu">addFunds</span>(-amount) }
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">object</span> Account {</span>
+<span id="cb3-2"><a href="#cb3-2"></a>  <span class="kw">def</span> <span class="fu">debitAll</span>(amount: BigDecimal, accounts: List[T <span class="kw">forSome</span> { <span class="kw">type</span> T &lt;: Account[T] }]): List[T <span class="kw">forSome</span> { <span class="kw">type</span> T &lt;: Account[T] }] = {</span>
+<span id="cb3-3"><a href="#cb3-3"></a>    accounts map { _.<span class="fu">addFunds</span>(-amount) }</span>
+<span id="cb3-4"><a href="#cb3-4"></a>  }</span>
+<span id="cb3-5"><a href="#cb3-5"></a>}</span></code></pre></div>
 <p>The important thing to notice here is that the type of individual members of the list are existentially bounded, rather than the list being existentially bounded as a whole. This is important, because it means that the type of elements may vary, rather than something like <code>List[T] forSome { type T &lt;: Account[T] }</code> which states that the values of the list are of some consistent subtype of T.</p>
 <p>So, this is a bit of an issue, but not a terrible one. The existential types clutter up our codebase and sometimes give the type inferencer headaches, but it’s not intractable. The ability to state these existential type bounds does, however, showcase one advantage that Scala’s existentials have over Java’s wildcard types, which cannot express this same construct accurately.</p>
 <p>The most subtle point about F-bounded types that is important to grasp is that the type bound is <em>not</em> as tight as one would ideally want it to be; instead of stating that a subtype must be eventually parameterized by itself, it simply states that a subtype must be parameterized by <em>some (potentially other) subtype</em>. Here’s an example.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> MalignantAccount <span class="kw">extends</span> Account[SavingsAccount] {
-  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal) = <span class="kw">new</span> <span class="fu">SavingsAccount</span>(-amount)
-}</code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">class</span> MalignantAccount <span class="kw">extends</span> Account[SavingsAccount] {</span>
+<span id="cb4-2"><a href="#cb4-2"></a>  <span class="kw">def</span> <span class="fu">addFunds</span>(amount: BigDecimal) = <span class="kw">new</span> <span class="fu">SavingsAccount</span>(-amount)</span>
+<span id="cb4-3"><a href="#cb4-3"></a>}</span></code></pre></div>
 <p>This will compile without error, and presents a bit of a pitfall. Fortunately, the type bounds that we were required to declare at the use sites will prevent many of the failure scenarios that we might be concerned about:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Test {
-  <span class="kw">def</span> <span class="fu">main</span>(argv: Array[String]): Unit = {
-    Account.<span class="fu">deposit</span>(BigDecimal(<span class="st">&quot;10.00&quot;</span>), <span class="kw">new</span> MalignantAccount)
-  }
-}
-
-nuttycom@crash: ~/tmp/scala/f-bounds $ scalac Test.<span class="fu">scala</span>
-Test.<span class="fu">scala</span>:<span class="dv">27</span>: error: inferred <span class="kw">type</span> arguments [MalignantAccount] <span class="kw">do</span> not conform to method deposit's <span class="kw">type</span> parameter bounds [T &lt;: Account[T]]
-    <span class="fu">deposit</span>(BigDecimal(<span class="st">&quot;10.00&quot;</span>), <span class="kw">new</span> MalignantAccount)
-    ^
-one error found</code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">object</span> Test {</span>
+<span id="cb5-2"><a href="#cb5-2"></a>  <span class="kw">def</span> <span class="fu">main</span>(argv: Array[String]): Unit = {</span>
+<span id="cb5-3"><a href="#cb5-3"></a>    Account.<span class="fu">deposit</span>(BigDecimal(<span class="st">&quot;10.00&quot;</span>), <span class="kw">new</span> MalignantAccount)</span>
+<span id="cb5-4"><a href="#cb5-4"></a>  }</span>
+<span id="cb5-5"><a href="#cb5-5"></a>}</span>
+<span id="cb5-6"><a href="#cb5-6"></a></span>
+<span id="cb5-7"><a href="#cb5-7"></a>nuttycom@crash: ~/tmp/scala/f-bounds $ scalac Test.<span class="fu">scala</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a>Test.<span class="fu">scala</span>:<span class="dv">27</span>: error: inferred <span class="kw">type</span> arguments [MalignantAccount] <span class="kw">do</span> not conform to method deposit's <span class="kw">type</span> parameter bounds [T &lt;: Account[T]]</span>
+<span id="cb5-9"><a href="#cb5-9"></a>    <span class="fu">deposit</span>(BigDecimal(<span class="st">&quot;10.00&quot;</span>), <span class="kw">new</span> MalignantAccount)</span>
+<span id="cb5-10"><a href="#cb5-10"></a>    ^</span>
+<span id="cb5-11"><a href="#cb5-11"></a>one error found</span></code></pre></div>
 <p>but it’s a little disconcerting to realize that this level of strictness is <em>only</em> available at the use site, and cannot be readily enforced (except perhaps by implicit type witness trickery, which I’ve not yet tried) in the declaration of the supertype, which is what we were really trying to do in the first place.</p>
 <p>Finally, it’s important to note that F-bounded type polymorphism in Scala falls on its face when you start talking about higher-kinded types. Suppose that one desired to state a supertype for Scala’s structurally monadic types (those which can be used in for-comprehensions):</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> Monadic[M[+_] &lt;: ({ <span class="kw">type</span> λ[+α] = Monadic[M, α] })#λ, +A] {
-  <span class="kw">def</span> map[B](f: A =&amp;gt; B): M[B]
-  <span class="kw">def</span> flatMap[B](f: A =&amp;gt; M[B]): M[B]
-}</code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">trait</span> Monadic[M[+_] &lt;: ({ <span class="kw">type</span> λ[+α] = Monadic[M, α] })#λ, +A] {</span>
+<span id="cb6-2"><a href="#cb6-2"></a>  <span class="kw">def</span> map[B](f: A =&amp;gt; B): M[B]</span>
+<span id="cb6-3"><a href="#cb6-3"></a>  <span class="kw">def</span> flatMap[B](f: A =&amp;gt; M[B]): M[B]</span>
+<span id="cb6-4"><a href="#cb6-4"></a>}</span></code></pre></div>
 <p>This fails to compile outright, complaining about cyclic references in the type constructor M.</p>
 <p>In conclusion, my experience has been that F-bounded type polymorphism is tricky to get right and causes typing clutter in the codebase. That isn’t to say that it’s without value, but I think it’s best to consider very carefully whether it is actually necessary to your particular application before you step into the rabbit hole. Most of the time, there’s no wonderland at the bottom.</p>
 <p><b>EDIT:</b></p>
 <p>Heiko asks below why not use the following definition of debitAll:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Account {
-  <span class="kw">def</span> debitAll2[T &lt;: Account[T]](amount: BigDecimal, accounts: List[T]): List[T] = {
-    accounts map { _.<span class="fu">addFunds</span>(-amount) }
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">object</span> Account {</span>
+<span id="cb7-2"><a href="#cb7-2"></a>  <span class="kw">def</span> debitAll2[T &lt;: Account[T]](amount: BigDecimal, accounts: List[T]): List[T] = {</span>
+<span id="cb7-3"><a href="#cb7-3"></a>    accounts map { _.<span class="fu">addFunds</span>(-amount) }</span>
+<span id="cb7-4"><a href="#cb7-4"></a>  }</span>
+<span id="cb7-5"><a href="#cb7-5"></a>}</span></code></pre></div>
 <p>The problem here is that this has a subtly different meaning; this says that for debitAll2, all the members of the list must be of the <em>same</em> subtype of Account. This becomes apparent when we actually try to use the method with a list where the subtype varies. In both constructions, actually, you end up having to explicitly ascribe the type of the list, but I’ve not been able to find a variant for the debitAll2 where the use site will actually compile with such a variant-membered list.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Test {
-  <span class="kw">def</span> <span class="fu">main</span>(argv: Array[String]): Unit = {
-    <span class="co">// compiles, though requires type ascription of the list; this is where the inferencer breaks down.</span>
-    Account.<span class="fu">debitAll</span>(BigDecimal(<span class="st">&quot;10.00&quot;</span>), List[T <span class="kw">forSome</span> { <span class="kw">type</span> T &lt;: Account[T] }](<span class="kw">new</span> <span class="fu">SavingsAccount</span>(BigDecimal(<span class="st">&quot;0&quot;</span>)), <span class="kw">new</span> <span class="fu">BrokerageAccount</span>(BigDecimal(<span class="st">&quot;0&quot;</span>))))
-
-    <span class="co">// doesn't compile</span>
-    <span class="co">// Account.debitAll2(BigDecimal(&quot;10.00&quot;), new SavingsAccount(BigDecimal(&quot;0&quot;)) :: new BrokerageAccount(BigDecimal(&quot;0&quot;)) :: Nil)</span>
-
-    <span class="co">// doesn't compile</span>
-    <span class="co">// Account.debitAll2(BigDecimal(&quot;10.00&quot;), List[T forSome { type T &lt;: Account[T] }](new SavingsAccount(BigDecimal(&quot;0&quot;)), new BrokerageAccount(BigDecimal(&quot;0&quot;))))</span>
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">object</span> Test {</span>
+<span id="cb8-2"><a href="#cb8-2"></a>  <span class="kw">def</span> <span class="fu">main</span>(argv: Array[String]): Unit = {</span>
+<span id="cb8-3"><a href="#cb8-3"></a>    <span class="co">// compiles, though requires type ascription of the list; this is where the inferencer breaks down.</span></span>
+<span id="cb8-4"><a href="#cb8-4"></a>    Account.<span class="fu">debitAll</span>(BigDecimal(<span class="st">&quot;10.00&quot;</span>), List[T <span class="kw">forSome</span> { <span class="kw">type</span> T &lt;: Account[T] }](<span class="kw">new</span> <span class="fu">SavingsAccount</span>(BigDecimal(<span class="st">&quot;0&quot;</span>)), <span class="kw">new</span> <span class="fu">BrokerageAccount</span>(BigDecimal(<span class="st">&quot;0&quot;</span>))))</span>
+<span id="cb8-5"><a href="#cb8-5"></a></span>
+<span id="cb8-6"><a href="#cb8-6"></a>    <span class="co">// doesn't compile</span></span>
+<span id="cb8-7"><a href="#cb8-7"></a>    <span class="co">// Account.debitAll2(BigDecimal(&quot;10.00&quot;), new SavingsAccount(BigDecimal(&quot;0&quot;)) :: new BrokerageAccount(BigDecimal(&quot;0&quot;)) :: Nil)</span></span>
+<span id="cb8-8"><a href="#cb8-8"></a></span>
+<span id="cb8-9"><a href="#cb8-9"></a>    <span class="co">// doesn't compile</span></span>
+<span id="cb8-10"><a href="#cb8-10"></a>    <span class="co">// Account.debitAll2(BigDecimal(&quot;10.00&quot;), List[T forSome { type T &lt;: Account[T] }](new SavingsAccount(BigDecimal(&quot;0&quot;)), new BrokerageAccount(BigDecimal(&quot;0&quot;))))</span></span>
+<span id="cb8-11"><a href="#cb8-11"></a>  }</span>
+<span id="cb8-12"><a href="#cb8-12"></a>}</span></code></pre></div>
 <p><em>migrated from http://logji.blogspot.com/2012/11/f-bounded-type-polymorphism-give-up-now.html </em></p>
 
   <div id="disqus_thread"></div>

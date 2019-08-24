@@ -38,34 +38,34 @@
 
   <p>The question of whether to use a constructor or a factory method for object construction is not new; we’ve had this discussion for years in the Java community. Scala’s approach to object construction has a few features that will undoubtedly reignite this debate.</p>
 <p>On the one hand, ordinary object construction is significantly more powerful than in Java - first, the all the ordinary Java boilerplate of assigning constructor parameters to member variables is abolished. What in Java would look like this:</p>
-<div class="sourceCode"><pre class="sourceCode java"><code class="sourceCode java"><span class="kw">public</span> <span class="kw">class</span> Foo {
-  <span class="dt">final</span> <span class="dt">int</span> myInt;
-  <span class="dt">final</span> String myString;
-
-  <span class="kw">public</span> <span class="fu">Foo</span>(<span class="dt">int</span> myInt, String myString) {
-    <span class="kw">this</span>.<span class="fu">myInt</span> = myInt;
-    <span class="kw">this</span>.<span class="fu">myString</span> = myString;
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">public</span> <span class="kw">class</span> Foo {</span>
+<span id="cb1-2"><a href="#cb1-2"></a>  <span class="dt">final</span> <span class="dt">int</span> myInt;</span>
+<span id="cb1-3"><a href="#cb1-3"></a>  <span class="dt">final</span> <span class="bu">String</span> myString;</span>
+<span id="cb1-4"><a href="#cb1-4"></a></span>
+<span id="cb1-5"><a href="#cb1-5"></a>  <span class="kw">public</span> <span class="fu">Foo</span>(<span class="dt">int</span> myInt, <span class="bu">String</span> myString) {</span>
+<span id="cb1-6"><a href="#cb1-6"></a>    <span class="kw">this</span>.<span class="fu">myInt</span> = myInt;</span>
+<span id="cb1-7"><a href="#cb1-7"></a>    <span class="kw">this</span>.<span class="fu">myString</span> = myString;</span>
+<span id="cb1-8"><a href="#cb1-8"></a>  }</span>
+<span id="cb1-9"><a href="#cb1-9"></a>}</span></code></pre></div>
 <p>becomes the concise and sensible</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> <span class="fu">Foo</span>(<span class="kw">val</span> myInt: Int, <span class="kw">val</span> myString: String)</code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">class</span> <span class="fu">Foo</span>(<span class="kw">val</span> myInt: Int, <span class="kw">val</span> myString: String)</span></code></pre></div>
 <p>More significantly, Scala’s trait mechanism allows for extension of a class definition at the use site; for example, if I have a trait that adds rendering logic to a class, I can mix it in only when I need it.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> FooRenderer <span class="kw">extends</span> Foo {
-  <span class="kw">def</span> render: String = <span class="st">&quot;I'm a Foo! My int is &quot;</span>+myInt+<span class="st">&quot; and my string is &quot;</span>+myString
-}
-
-<span class="kw">val</span> f1 = <span class="kw">new</span> <span class="fu">Foo</span>(<span class="dv">1</span>, <span class="st">&quot;hi&quot;</span>) <span class="co">// normal Foo</span>
-<span class="kw">val</span> f2 = <span class="kw">new</span> <span class="fu">Foo</span>(<span class="dv">2</span>, <span class="st">&quot;well, hello!&quot;</span>) <span class="kw">with</span> FooRenderer <span class="co">// renderable Foo</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">trait</span> FooRenderer <span class="kw">extends</span> Foo {</span>
+<span id="cb3-2"><a href="#cb3-2"></a>  <span class="kw">def</span> render: String = <span class="st">&quot;I'm a Foo! My int is &quot;</span>+myInt+<span class="st">&quot; and my string is &quot;</span>+myString</span>
+<span id="cb3-3"><a href="#cb3-3"></a>}</span>
+<span id="cb3-4"><a href="#cb3-4"></a></span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="kw">val</span> f1 = <span class="kw">new</span> <span class="fu">Foo</span>(<span class="dv">1</span>, <span class="st">&quot;hi&quot;</span>) <span class="co">// normal Foo</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a><span class="kw">val</span> f2 = <span class="kw">new</span> <span class="fu">Foo</span>(<span class="dv">2</span>, <span class="st">&quot;well, hello!&quot;</span>) <span class="kw">with</span> FooRenderer <span class="co">// renderable Foo</span></span></code></pre></div>
 <p>So Scala’s constructors are really powerful and you really want to use them, right? But wait…</p>
 <p>It turns out that there are some subtle issues that arise if you start adding more logic to constructors in Scala. The logic of a Scala constructor goes directly in the body of the class, and here’s the tricky bit: this is also where other member variables that aren’t just blindly assigned as constructor parameters are declared and assigned. In Java, any intermediate variables that you used within a constructor were unavoiably local; in Scala they can easily (and will, if care is not taken) become a permanent part of the object.</p>
 <p>Let’s look at something a little more complex. Consider a class that, as part of its construction, finds the most common element in a list and assigns both that element and the number of occurrences to member variables.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> Common[T](l: Iterable[T]) {
-  <span class="kw">val</span> (value, count) = l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) { (m, v) =&gt;
-    m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))
-  } reduceLeft { (a, b) =&gt;
-    <span class="kw">if</span> (a.<span class="fu">_2</span> &gt; b.<span class="fu">_2</span>) a <span class="kw">else</span> b
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">class</span> Common[T](l: Iterable[T]) {</span>
+<span id="cb4-2"><a href="#cb4-2"></a>  <span class="kw">val</span> (value, count) = l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) { (m, v) =&gt;</span>
+<span id="cb4-3"><a href="#cb4-3"></a>    m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))</span>
+<span id="cb4-4"><a href="#cb4-4"></a>  } reduceLeft { (a, b) =&gt;</span>
+<span id="cb4-5"><a href="#cb4-5"></a>    <span class="kw">if</span> (a._<span class="dv">2</span> &gt; b._<span class="dv">2</span>) a <span class="kw">else</span> b</span>
+<span id="cb4-6"><a href="#cb4-6"></a>  }</span>
+<span id="cb4-7"><a href="#cb4-7"></a>}</span></code></pre></div>
 <p>Now, there may be ways to implement this that avoid constructing and decomposing a tuple, but this is the most straightforward and efficient implementation I could come up with. A peek at the generated bytecode reveals something interesting, however:</p>
 <pre><code>93: putfield #83; //Field x$1:Lscala/Tuple2;
 96: aload_0
@@ -81,32 +81,32 @@
 118: putfield #93; //Field count:I</code></pre>
 <p>What’s up with line 93? I didn’t want that spurious Tuple2 to hang around as a member field - I just needed it as an intermediate value in the construction of the object!</p>
 <p>As it turns out, this problem is not restricted to tuples; if you use intermediate variables in the construction of your objects, they will become permanent residents. This may not be a real problem in most circumstances, but it feels messy. Now, the standard thing to do in this situation would to be to create a factory method on the companion object:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">object</span> Common {
-  <span class="kw">def</span> apply[T](l: Iterable[T]): Common[T] = {
-    <span class="kw">val</span> (value, count) = l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) {(m, v) =&gt;
-      m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))
-    }.<span class="fu">reduceLeft</span> {(a, b) =&gt;
-      <span class="kw">if</span> (a.<span class="fu">_2</span> &gt; b.<span class="fu">_2</span>) a <span class="kw">else</span> b
-    }
-
-    <span class="kw">new</span> <span class="fu">Common</span>(value, count)
-  }
-}
-
-<span class="kw">class</span> Common[T](<span class="kw">val</span> value: T, <span class="kw">val</span> count: Int)</code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">object</span> Common {</span>
+<span id="cb6-2"><a href="#cb6-2"></a>  <span class="kw">def</span> apply[T](l: Iterable[T]): Common[T] = {</span>
+<span id="cb6-3"><a href="#cb6-3"></a>    <span class="kw">val</span> (value, count) = l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) {(m, v) =&gt;</span>
+<span id="cb6-4"><a href="#cb6-4"></a>      m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))</span>
+<span id="cb6-5"><a href="#cb6-5"></a>    }.<span class="fu">reduceLeft</span> {(a, b) =&gt;</span>
+<span id="cb6-6"><a href="#cb6-6"></a>      <span class="kw">if</span> (a._<span class="dv">2</span> &gt; b._<span class="dv">2</span>) a <span class="kw">else</span> b</span>
+<span id="cb6-7"><a href="#cb6-7"></a>    }</span>
+<span id="cb6-8"><a href="#cb6-8"></a></span>
+<span id="cb6-9"><a href="#cb6-9"></a>    <span class="kw">new</span> <span class="fu">Common</span>(value, count)</span>
+<span id="cb6-10"><a href="#cb6-10"></a>  }</span>
+<span id="cb6-11"><a href="#cb6-11"></a>}</span>
+<span id="cb6-12"><a href="#cb6-12"></a></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="kw">class</span> Common[T](<span class="kw">val</span> value: T, <span class="kw">val</span> count: Int)</span></code></pre></div>
 <p>Now there’s no intermediate variable stored in the bytecode for Common, but we have a new problem: we can no longer construct the object from an iterable while mixing in an additional trait at the instantiation site!</p>
 <p>Scala supports the use of auxiliary constructors, with the caveat (similar to that present in Java) that the first statement in an auxiliary constructor must be either a call to the primary constructor, or another auxiliary constructor. Because of this constraint, we can’t simply use the contents of the factory method above in an auxiliary constructor. We can, however, evaluate a method within the chained call, and that gives us a workable, if somewhat boilerplate-laden solution.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">class</span> Common[T](<span class="kw">val</span> value: T, <span class="kw">val</span> count: Int) {
-  <span class="kw">private</span> <span class="kw">def</span> <span class="kw">this</span>(t: Tuple2[T, Int]) = <span class="kw">this</span>(t.<span class="fu">_1</span>, t.<span class="fu">_2</span>)
-
-  <span class="kw">def</span> <span class="kw">this</span>(l: Iterable[T]) = <span class="kw">this</span>(
-    l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) {(m, v) =&gt;
-      m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))
-    }.<span class="fu">reduceLeft</span> {(a, b) =&gt;
-      <span class="kw">if</span> (a.<span class="fu">_2</span> &gt; b.<span class="fu">_2</span>) a <span class="kw">else</span> b
-    }
-  )
-}</code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">class</span> Common[T](<span class="kw">val</span> value: T, <span class="kw">val</span> count: Int) {</span>
+<span id="cb7-2"><a href="#cb7-2"></a>  <span class="kw">private</span> <span class="kw">def</span> <span class="kw">this</span>(t: Tuple2[T, Int]) = <span class="kw">this</span>(t._<span class="dv">1</span>, t._<span class="dv">2</span>)</span>
+<span id="cb7-3"><a href="#cb7-3"></a></span>
+<span id="cb7-4"><a href="#cb7-4"></a>  <span class="kw">def</span> <span class="kw">this</span>(l: Iterable[T]) = <span class="kw">this</span>(</span>
+<span id="cb7-5"><a href="#cb7-5"></a>    l.<span class="fu">foldLeft</span>(Map.<span class="fu">empty</span>[T,Int]) {(m, v) =&gt;</span>
+<span id="cb7-6"><a href="#cb7-6"></a>      m + (v -&gt; (m.<span class="fu">getOrElse</span>(v, <span class="dv">0</span>) + <span class="dv">1</span>))</span>
+<span id="cb7-7"><a href="#cb7-7"></a>    }.<span class="fu">reduceLeft</span> {(a, b) =&gt;</span>
+<span id="cb7-8"><a href="#cb7-8"></a>      <span class="kw">if</span> (a._<span class="dv">2</span> &gt; b._<span class="dv">2</span>) a <span class="kw">else</span> b</span>
+<span id="cb7-9"><a href="#cb7-9"></a>    }</span>
+<span id="cb7-10"><a href="#cb7-10"></a>  )</span>
+<span id="cb7-11"><a href="#cb7-11"></a>}</span></code></pre></div>
 <p>By threading the decomposition through a private constructor that takes a tuple, we can now avoid the spurious intermediate values getting incorporated into the class, and still enjoy the benefits of instantiation-site mix-ins. What’s more, there has been a bunch of talk on the Scala mailing list about a future unification of tuples with method (and hopefully constructor) parameters - in which event the extra private constructor could disappear entirely!</p>
 <p><em>migrated from http://logji.blogspot.com/2009/04/deconstructoring-scala.html </em></p>
 

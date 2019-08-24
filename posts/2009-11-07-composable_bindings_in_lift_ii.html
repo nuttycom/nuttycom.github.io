@@ -38,111 +38,111 @@
 
   <p>In my <a href="./2009-09-29-composable_bindings_in_lift.html">previous post</a> I presented the DataBinding[T] type (T =&gt; NodeSeq =&gt; NodeSeq) and illustrated how classes inhabiting this type could be used along with an implicit binder function to create modular, reusable rendering logic for objects. In this post, I will discuss how to assemble these components and strategies for handling rendering over inheritance hierarchies.</p>
 <p>I left off last time with this DataBinding trait:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> OrderBinding <span class="kw">extends</span> DataBinding[Order] {
-  <span class="kw">implicit</span> <span class="kw">val</span> userBinding: DataBinding[User]
-  <span class="kw">implicit</span> <span class="kw">val</span> addressBinding: DataBinding[Address]
-  <span class="kw">implicit</span> <span class="kw">val</span> lineBinding: DataBinding[OrderLine]
-  <span class="kw">implicit</span> <span class="kw">val</span> txnBinding: DataBinding[Transaction]
-
-  <span class="kw">def</span> <span class="fu">apply</span>(order: Order): Binding = (xhtml: NodeSeq) =&gt; {
-    <span class="kw">val</span> itemTemplate = <span class="fu">chooseTemplate</span>(<span class="st">&quot;order&quot;</span>, <span class="st">&quot;lineItem&quot;</span>, xhtml)
-    <span class="kw">val</span> txnTemplate = <span class="fu">chooseTemplate</span>(<span class="st">&quot;order&quot;</span>, <span class="st">&quot;transaction&quot;</span>, xhtml)
-
-    <span class="fu">bind</span>(<span class="st">&quot;order&quot;</span>, xhtml,
-      <span class="st">&quot;user&quot;</span> -&gt; order.<span class="fu">user</span>.<span class="fu">bind</span>(<span class="st">&quot;templates-hidden/user/order-display&quot;</span>.<span class="fu">path</span>),
-      <span class="st">&quot;shipTo&quot;</span> -&gt; order.<span class="fu">shipTo</span>.<span class="fu">bind</span>(<span class="st">&quot;templates-hidden/address/order-display&quot;</span>.<span class="fu">path</span>),
-      <span class="st">&quot;lineItems&quot;</span> -&gt; order.<span class="fu">items</span>.<span class="fu">flatMap</span>(_.<span class="fu">bind</span>(itemTemplate)).<span class="fu">toSeq</span>,
-      <span class="st">&quot;transactions&quot;</span> -&gt; order.<span class="fu">transactions</span>.<span class="fu">flatMap</span>(_.<span class="fu">bind</span>(txnTemplate)).<span class="fu">toSeq</span>
-    )
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">trait</span> OrderBinding <span class="kw">extends</span> DataBinding[Order] {</span>
+<span id="cb1-2"><a href="#cb1-2"></a>  <span class="kw">implicit</span> <span class="kw">val</span> userBinding: DataBinding[User]</span>
+<span id="cb1-3"><a href="#cb1-3"></a>  <span class="kw">implicit</span> <span class="kw">val</span> addressBinding: DataBinding[Address]</span>
+<span id="cb1-4"><a href="#cb1-4"></a>  <span class="kw">implicit</span> <span class="kw">val</span> lineBinding: DataBinding[OrderLine]</span>
+<span id="cb1-5"><a href="#cb1-5"></a>  <span class="kw">implicit</span> <span class="kw">val</span> txnBinding: DataBinding[Transaction]</span>
+<span id="cb1-6"><a href="#cb1-6"></a></span>
+<span id="cb1-7"><a href="#cb1-7"></a>  <span class="kw">def</span> <span class="fu">apply</span>(order: Order): Binding = (xhtml: NodeSeq) =&gt; {</span>
+<span id="cb1-8"><a href="#cb1-8"></a>    <span class="kw">val</span> itemTemplate = <span class="fu">chooseTemplate</span>(<span class="st">&quot;order&quot;</span>, <span class="st">&quot;lineItem&quot;</span>, xhtml)</span>
+<span id="cb1-9"><a href="#cb1-9"></a>    <span class="kw">val</span> txnTemplate = <span class="fu">chooseTemplate</span>(<span class="st">&quot;order&quot;</span>, <span class="st">&quot;transaction&quot;</span>, xhtml)</span>
+<span id="cb1-10"><a href="#cb1-10"></a></span>
+<span id="cb1-11"><a href="#cb1-11"></a>    <span class="fu">bind</span>(<span class="st">&quot;order&quot;</span>, xhtml,</span>
+<span id="cb1-12"><a href="#cb1-12"></a>      <span class="st">&quot;user&quot;</span> -&gt; order.<span class="fu">user</span>.<span class="fu">bind</span>(<span class="st">&quot;templates-hidden/user/order-display&quot;</span>.<span class="fu">path</span>),</span>
+<span id="cb1-13"><a href="#cb1-13"></a>      <span class="st">&quot;shipTo&quot;</span> -&gt; order.<span class="fu">shipTo</span>.<span class="fu">bind</span>(<span class="st">&quot;templates-hidden/address/order-display&quot;</span>.<span class="fu">path</span>),</span>
+<span id="cb1-14"><a href="#cb1-14"></a>      <span class="st">&quot;lineItems&quot;</span> -&gt; order.<span class="fu">items</span>.<span class="fu">flatMap</span>(_.<span class="fu">bind</span>(itemTemplate)).<span class="fu">toSeq</span>,</span>
+<span id="cb1-15"><a href="#cb1-15"></a>      <span class="st">&quot;transactions&quot;</span> -&gt; order.<span class="fu">transactions</span>.<span class="fu">flatMap</span>(_.<span class="fu">bind</span>(txnTemplate)).<span class="fu">toSeq</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a>    )</span>
+<span id="cb1-17"><a href="#cb1-17"></a>  }</span>
+<span id="cb1-18"><a href="#cb1-18"></a>}</span></code></pre></div>
 <p>This <code>DataBinding[Order]</code> is a trait, not an object like the previous binding instances. In addition, the other DataBinding instances that it delegates to are abstract implicit vals - meaning that I will need to create a concrete implementation of this trait to actually use it. The interesting thing here is that these vals are declared implicit within the scope of the trait, but do not need to be declared implicit when the trait is extended and made concrete. I can then compose what I want my binding to look like at the use site (say an ordinary snippet) like this:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">import</span> Bindings.<span class="fu">_</span>
-
-<span class="kw">class</span> MySnippet {
-  <span class="kw">private</span> <span class="kw">implicit</span> <span class="kw">object</span> ShowOrderBinding <span class="kw">extends</span> OrderBinding {
-    <span class="kw">val</span> userBinding = UserBinding
-    <span class="kw">val</span> addressBinding = MailingAddressBinding
-    <span class="kw">val</span> lineBinding = OrderLineBinding
-    <span class="kw">val</span> txnBinding = TransactionBinding <span class="co">//we'll implement this in a minute</span>
-  }
-
-  <span class="kw">def</span> <span class="fu">showOrder</span>(xhtml: NodeSeq): NodeSeq = {
-    <span class="kw">val</span> order: Order = <span class="co">//get an order from somewhere</span>
-    order.<span class="fu">bind</span>(xhtml)
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">import</span> Bindings._</span>
+<span id="cb2-2"><a href="#cb2-2"></a></span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="kw">class</span> MySnippet {</span>
+<span id="cb2-4"><a href="#cb2-4"></a>  <span class="kw">private</span> <span class="kw">implicit</span> <span class="kw">object</span> ShowOrderBinding <span class="kw">extends</span> OrderBinding {</span>
+<span id="cb2-5"><a href="#cb2-5"></a>    <span class="kw">val</span> userBinding = UserBinding</span>
+<span id="cb2-6"><a href="#cb2-6"></a>    <span class="kw">val</span> addressBinding = MailingAddressBinding</span>
+<span id="cb2-7"><a href="#cb2-7"></a>    <span class="kw">val</span> lineBinding = OrderLineBinding</span>
+<span id="cb2-8"><a href="#cb2-8"></a>    <span class="kw">val</span> txnBinding = TransactionBinding <span class="co">//we'll implement this in a minute</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a>  }</span>
+<span id="cb2-10"><a href="#cb2-10"></a></span>
+<span id="cb2-11"><a href="#cb2-11"></a>  <span class="kw">def</span> <span class="fu">showOrder</span>(xhtml: NodeSeq): NodeSeq = {</span>
+<span id="cb2-12"><a href="#cb2-12"></a>    <span class="kw">val</span> order: Order = <span class="co">//get an order from somewhere</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a>    order.<span class="fu">bind</span>(xhtml)</span>
+<span id="cb2-14"><a href="#cb2-14"></a>  }</span>
+<span id="cb2-15"><a href="#cb2-15"></a>}</span></code></pre></div>
 <p>The <code>ShowOrderBinding</code> selects the bindings I want for the components of the order in a declarative fashion, and since it is an implicit object in scope, it is selected as the DataBinding instance to render the order when order.bind is called. If I decide that I want to use the AdminAddressBinding from the previous post instead, I simply substitute it for MailingAddressBinding at the use site and I’m done!</p>
 <p>There’s one more thing that needs to be done in the above code - to implement <code>TransactionBinding</code>. This is a little tricky because there are several subclasses of <code>Transaction</code> that may be in the list of transactions for an order, so I’m going to need to recover type information about those instances at runtime in order to be able to choose the correct binding for a given <code>Transaction</code>. Furthermore, there’s some information in the base <code>Transaction</code> type that I don’t want to have to repeat bindings for in each subtype binding, so I’m going to use function composition to “add together” two different bindings.</p>
 <p>There are two different approaches I’m going to show for how one might go about doing this: first, I’ll try using a straightforward Scala match statement to figure out the object’s type. That looks like this:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> TransactionBinding <span class="kw">extends</span> DataBinding[Transaction] {
-  <span class="kw">implicit</span> <span class="kw">val</span> authBinding: DataBinding[AuthTransaction]
-  <span class="kw">implicit</span> <span class="kw">val</span> captureBinding: DataBinding[CaptureTransaction]
-  <span class="kw">implicit</span> <span class="kw">val</span> shipBinig: DataBinding[ShipTransaction]
-
-  <span class="kw">def</span> <span class="fu">apply</span>(txn: Transaction): Binding = {
-    <span class="kw">val</span> base: Binding = <span class="fu">bind</span>(<span class="st">&quot;txn&quot;</span>, _,
-      <span class="st">&quot;scheduleDate&quot;</span> -&gt; Text(txn.<span class="fu">scheduledAt</span>.<span class="fu">toString</span>),
-      <span class="st">&quot;completionDate&quot;</span> -&gt; Text(txn.<span class="fu">completedAt</span>.<span class="fu">getOrElse</span>(<span class="st">&quot;(incomplete)&quot;</span>).<span class="fu">toString</span>),
-      <span class="st">&quot;state&quot;</span> -&gt; Text(
-        txn.<span class="fu">state</span> <span class="kw">match</span> {
-          <span class="kw">case</span> COMPLETE =&gt; <span class="st">&quot;complete&quot;</span>
-          <span class="kw">case</span> _ =&gt; <span class="st">&quot;weird&quot;</span>
-        }
-      )
-    )
-
-    base <span class="fu">compose</span> (
-      txn <span class="kw">match</span> {
-        <span class="kw">case</span> auth: AuthTransaction =&gt; auth.<span class="fu">binding</span>
-        <span class="kw">case</span> capture: CaptureTransaction =&gt; capture.<span class="fu">binding</span>
-        <span class="kw">case</span> ship: ShipTransaction =&gt; ship.<span class="fu">binding</span>
-        <span class="kw">case</span> _ =&gt; <span class="fu">error</span>(<span class="st">&quot;Unrecognized transaction type!&quot;</span>)
-      }
-    )
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">trait</span> TransactionBinding <span class="kw">extends</span> DataBinding[Transaction] {</span>
+<span id="cb3-2"><a href="#cb3-2"></a>  <span class="kw">implicit</span> <span class="kw">val</span> authBinding: DataBinding[AuthTransaction]</span>
+<span id="cb3-3"><a href="#cb3-3"></a>  <span class="kw">implicit</span> <span class="kw">val</span> captureBinding: DataBinding[CaptureTransaction]</span>
+<span id="cb3-4"><a href="#cb3-4"></a>  <span class="kw">implicit</span> <span class="kw">val</span> shipBinig: DataBinding[ShipTransaction]</span>
+<span id="cb3-5"><a href="#cb3-5"></a></span>
+<span id="cb3-6"><a href="#cb3-6"></a>  <span class="kw">def</span> <span class="fu">apply</span>(txn: Transaction): Binding = {</span>
+<span id="cb3-7"><a href="#cb3-7"></a>    <span class="kw">val</span> base: Binding = <span class="fu">bind</span>(<span class="st">&quot;txn&quot;</span>, _,</span>
+<span id="cb3-8"><a href="#cb3-8"></a>      <span class="st">&quot;scheduleDate&quot;</span> -&gt; Text(txn.<span class="fu">scheduledAt</span>.<span class="fu">toString</span>),</span>
+<span id="cb3-9"><a href="#cb3-9"></a>      <span class="st">&quot;completionDate&quot;</span> -&gt; Text(txn.<span class="fu">completedAt</span>.<span class="fu">getOrElse</span>(<span class="st">&quot;(incomplete)&quot;</span>).<span class="fu">toString</span>),</span>
+<span id="cb3-10"><a href="#cb3-10"></a>      <span class="st">&quot;state&quot;</span> -&gt; Text(</span>
+<span id="cb3-11"><a href="#cb3-11"></a>        txn.<span class="fu">state</span> <span class="kw">match</span> {</span>
+<span id="cb3-12"><a href="#cb3-12"></a>          <span class="kw">case</span> COMPLETE =&gt; <span class="st">&quot;complete&quot;</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a>          <span class="kw">case</span> _ =&gt; <span class="st">&quot;weird&quot;</span></span>
+<span id="cb3-14"><a href="#cb3-14"></a>        }</span>
+<span id="cb3-15"><a href="#cb3-15"></a>      )</span>
+<span id="cb3-16"><a href="#cb3-16"></a>    )</span>
+<span id="cb3-17"><a href="#cb3-17"></a></span>
+<span id="cb3-18"><a href="#cb3-18"></a>    base <span class="fu">compose</span> (</span>
+<span id="cb3-19"><a href="#cb3-19"></a>      txn <span class="kw">match</span> {</span>
+<span id="cb3-20"><a href="#cb3-20"></a>        <span class="kw">case</span> auth: AuthTransaction =&gt; auth.<span class="fu">binding</span></span>
+<span id="cb3-21"><a href="#cb3-21"></a>        <span class="kw">case</span> capture: CaptureTransaction =&gt; capture.<span class="fu">binding</span></span>
+<span id="cb3-22"><a href="#cb3-22"></a>        <span class="kw">case</span> ship: ShipTransaction =&gt; ship.<span class="fu">binding</span></span>
+<span id="cb3-23"><a href="#cb3-23"></a>        <span class="kw">case</span> _ =&gt; <span class="fu">error</span>(<span class="st">&quot;Unrecognized transaction type!&quot;</span>)</span>
+<span id="cb3-24"><a href="#cb3-24"></a>      }</span>
+<span id="cb3-25"><a href="#cb3-25"></a>    )</span>
+<span id="cb3-26"><a href="#cb3-26"></a>  }</span>
+<span id="cb3-27"><a href="#cb3-27"></a>}</span></code></pre></div>
 <p>Here, I’ve created a base binding that defines some simple behavior for how to bind elements that are common to all transactions. I then <em>compose</em> that generated binding with a binding for the appropriate subclass. The determination of the subclass binding is of necessity a bit boilerplate-laden, but that’s what happens when one throws away compile-time type information. The alternative, of course, would be to store each type of transaction in a separate collection associated with the order, but that’s not the way I’ve gone for now.</p>
 <p>There is, however, a hidden bug that may lurk in the pattern match above, depending upon your environment. Let’s supposed for a minute that our model classes are persisted by Hibernate - and that the list of Transactions is annotated such that it is lazily, instead of eagerly, fetched from the database. In this case, the transactions returned may be translucently wrapped in runtime proxies. I say translucently instead of transparently because there is one critical respect in which a proxy does not behave in the same manner as the class being proxied - how it responds to the instanceof check that underlies the Scala pattern match. In this case, we will need to use a <code>Visitor</code> to correctly get the type for which we want to delegate binding. To do this, we’ll modify our transaction classes as so:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> TransactionFunc[T] {
-  <span class="kw">def</span> <span class="fu">apply</span>(auth: AuthTransaction): T
-  <span class="kw">def</span> <span class="fu">apply</span>(capture: CaptureTransaction): T
-  <span class="kw">def</span> <span class="fu">apply</span>(ship: ShipTransaction): T
-}
-
-<span class="kw">abstract</span> <span class="kw">class</span> <span class="fu">Transaction</span>(<span class="kw">val</span> scheduledAt: DateTime, <span class="kw">val</span> completedAt: Option[DateTime], state: State) {
-  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T
-}
-
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">AuthTransaction</span>(cc: CreditCard, amount: BigDecimal, scheduledAt: DateTime, completedAt: Option[DateTime], state: State) <span class="kw">extends</span> <span class="fu">Transaction</span>(scheduledAt, completedAt) {
-  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T = f.<span class="fu">apply</span>(<span class="kw">this</span>)
-}
-
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">CaptureTransaction</span>(auth: AuthTransaction, ...) <span class="kw">extends</span> <span class="fu">Transaction</span>(...)  {
-  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T = f.<span class="fu">apply</span>(<span class="kw">this</span>)
-}
-
-<span class="kw">case</span> <span class="kw">class</span> <span class="fu">ShipTransaction</span>(items: List[OrderLine], ...) <span class="kw">extends</span> <span class="fu">Transaction</span>(...)  {
-  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T = f.<span class="fu">apply</span>(<span class="kw">this</span>)
-}</code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">trait</span> TransactionFunc[T] {</span>
+<span id="cb4-2"><a href="#cb4-2"></a>  <span class="kw">def</span> <span class="fu">apply</span>(auth: AuthTransaction): T</span>
+<span id="cb4-3"><a href="#cb4-3"></a>  <span class="kw">def</span> <span class="fu">apply</span>(capture: CaptureTransaction): T</span>
+<span id="cb4-4"><a href="#cb4-4"></a>  <span class="kw">def</span> <span class="fu">apply</span>(ship: ShipTransaction): T</span>
+<span id="cb4-5"><a href="#cb4-5"></a>}</span>
+<span id="cb4-6"><a href="#cb4-6"></a></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="kw">abstract</span> <span class="kw">class</span> <span class="fu">Transaction</span>(<span class="kw">val</span> scheduledAt: DateTime, <span class="kw">val</span> completedAt: Option[DateTime], state: State) {</span>
+<span id="cb4-8"><a href="#cb4-8"></a>  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T</span>
+<span id="cb4-9"><a href="#cb4-9"></a>}</span>
+<span id="cb4-10"><a href="#cb4-10"></a></span>
+<span id="cb4-11"><a href="#cb4-11"></a><span class="kw">case</span> <span class="kw">class</span> <span class="fu">AuthTransaction</span>(cc: CreditCard, amount: BigDecimal, scheduledAt: DateTime, completedAt: Option[DateTime], state: State) <span class="kw">extends</span> <span class="fu">Transaction</span>(scheduledAt, completedAt) {</span>
+<span id="cb4-12"><a href="#cb4-12"></a>  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T = f.<span class="fu">apply</span>(<span class="kw">this</span>)</span>
+<span id="cb4-13"><a href="#cb4-13"></a>}</span>
+<span id="cb4-14"><a href="#cb4-14"></a></span>
+<span id="cb4-15"><a href="#cb4-15"></a><span class="kw">case</span> <span class="kw">class</span> <span class="fu">CaptureTransaction</span>(auth: AuthTransaction, ...) <span class="kw">extends</span> <span class="fu">Transaction</span>(...)  {</span>
+<span id="cb4-16"><a href="#cb4-16"></a>  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T = f.<span class="fu">apply</span>(<span class="kw">this</span>)</span>
+<span id="cb4-17"><a href="#cb4-17"></a>}</span>
+<span id="cb4-18"><a href="#cb4-18"></a></span>
+<span id="cb4-19"><a href="#cb4-19"></a><span class="kw">case</span> <span class="kw">class</span> <span class="fu">ShipTransaction</span>(items: List[OrderLine], ...) <span class="kw">extends</span> <span class="fu">Transaction</span>(...)  {</span>
+<span id="cb4-20"><a href="#cb4-20"></a>  <span class="kw">def</span> accept[T](f: TransactionFunc[T]): T = f.<span class="fu">apply</span>(<span class="kw">this</span>)</span>
+<span id="cb4-21"><a href="#cb4-21"></a>}</span></code></pre></div>
 <p>Then, the implementation of our transaction binding becomes this:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">trait</span> TransactionBinding <span class="kw">extends</span> DataBinding[Transaction] {
-  <span class="kw">implicit</span> <span class="kw">val</span> authBinding: DataBinding[AuthTransaction]
-  <span class="kw">implicit</span> <span class="kw">val</span> captureBinding: DataBinding[CaptureTransaction]
-  <span class="kw">implicit</span> <span class="kw">val</span> shipBinig: DataBinding[ShipTransaction]
-
-  <span class="kw">def</span> <span class="fu">apply</span>(txn: Transaction): Binding = {
-    <span class="kw">val</span> base: Binding = <span class="co">//same as before...</span>
-
-    base compose txn.<span class="fu">accept</span>(
-      <span class="kw">new</span> TransactionFunc[Binding] {
-        <span class="kw">def</span> <span class="fu">apply</span>(auth: AuthTransaction) = auth.<span class="fu">binding</span>
-        <span class="kw">def</span> <span class="fu">apply</span>(capture: CaptureTransaction) = capture.<span class="fu">binding</span>
-        <span class="kw">def</span> <span class="fu">apply</span>(ship: ShipTransaction) = ship.<span class="fu">binding</span>
-      }
-    )
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">trait</span> TransactionBinding <span class="kw">extends</span> DataBinding[Transaction] {</span>
+<span id="cb5-2"><a href="#cb5-2"></a>  <span class="kw">implicit</span> <span class="kw">val</span> authBinding: DataBinding[AuthTransaction]</span>
+<span id="cb5-3"><a href="#cb5-3"></a>  <span class="kw">implicit</span> <span class="kw">val</span> captureBinding: DataBinding[CaptureTransaction]</span>
+<span id="cb5-4"><a href="#cb5-4"></a>  <span class="kw">implicit</span> <span class="kw">val</span> shipBinig: DataBinding[ShipTransaction]</span>
+<span id="cb5-5"><a href="#cb5-5"></a></span>
+<span id="cb5-6"><a href="#cb5-6"></a>  <span class="kw">def</span> <span class="fu">apply</span>(txn: Transaction): Binding = {</span>
+<span id="cb5-7"><a href="#cb5-7"></a>    <span class="kw">val</span> base: Binding = <span class="co">//same as before...</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a></span>
+<span id="cb5-9"><a href="#cb5-9"></a>    base compose txn.<span class="fu">accept</span>(</span>
+<span id="cb5-10"><a href="#cb5-10"></a>      <span class="kw">new</span> TransactionFunc[Binding] {</span>
+<span id="cb5-11"><a href="#cb5-11"></a>        <span class="kw">def</span> <span class="fu">apply</span>(auth: AuthTransaction) = auth.<span class="fu">binding</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a>        <span class="kw">def</span> <span class="fu">apply</span>(capture: CaptureTransaction) = capture.<span class="fu">binding</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a>        <span class="kw">def</span> <span class="fu">apply</span>(ship: ShipTransaction) = ship.<span class="fu">binding</span></span>
+<span id="cb5-14"><a href="#cb5-14"></a>      }</span>
+<span id="cb5-15"><a href="#cb5-15"></a>    )</span>
+<span id="cb5-16"><a href="#cb5-16"></a>  }</span>
+<span id="cb5-17"><a href="#cb5-17"></a>}</span></code></pre></div>
 <p>Since the correct overloading of TransactionFunc.apply will be statically determined, there is no possibility of a proxy getting in the way of our binding.</p>
 <p>So, now we have a set of tools for binding composition. Here are some additional ideas of where this might be able to go, given the appropriate changes to Lift.</p>
 <p>In my example of the <code>showOrder</code> snippet above, the implementation is trivial… so trivial, in fact, that it almost doesn’t need to be there. If the notion of a binding was fully integrated into Lift, we could make Loc somewhat more powerful. Loc is one of the primary classes in Lift used to generate the SiteMap, which declares what paths are accessible within a Lift application. A path in a Loc typically corresponds to the path to an XML template that will specify the snippets and markup for a request. An important thing to note though is that <code>Loc</code> is not simply <code>Loc</code> - it is in fact <code>Loc[T]</code>, where by default <code>T</code> is <code>NullLocParams</code>, a meaningless object essentially equivalent to <code>Unit</code>.</p>

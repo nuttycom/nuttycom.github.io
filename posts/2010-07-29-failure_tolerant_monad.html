@@ -37,59 +37,59 @@
   </div>
 
   <p>I was working on a problem today where some of the computations could fail, but degrade gracefully while providing information about how exactly they failed so that clients could choose whether or not to use the result. This is what I came up with:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="co">/**</span>
-<span class="co"> * A monad used to entrain computations on a value that might fail.</span>
-<span class="co"> * This is distinct from Either in that it allows computations to continue</span>
-<span class="co"> * in the presence of errors, with the possibility of a degraded result.</span>
-<span class="co"> * The user of the result can then decide its suitability for use based upon</span>
-<span class="co"> * any errors that might be returned. Errors must form a semigroup.</span>
-<span class="co"> */</span>
-<span class="kw">sealed</span> <span class="kw">trait</span> Attempt[E, +A] {
-  <span class="kw">def</span> value: A
-  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B]
-  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B]
-
-  <span class="kw">def</span> error: Option[E]
-  <span class="kw">def</span> either: Either[E, A]
-}
-
-<span class="kw">case</span> <span class="kw">class</span> Success[E, +A](value: A) <span class="kw">extends</span> Attempt[E, A] {
-  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B] = <span class="fu">Success</span>(<span class="fu">f</span>(value))
-  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B] = <span class="fu">f</span>(value)
-  <span class="kw">def</span> error = None
-  <span class="kw">def</span> either = <span class="fu">Right</span>(value)
-}
-
-<span class="kw">case</span> <span class="kw">class</span> Failure[E, +A](err: E, value: A)(<span class="kw">implicit</span> append: (E, E) =&gt; E) <span class="kw">extends</span> Attempt[E, A] {
-  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B] = <span class="fu">Failure</span>(err, <span class="fu">f</span>(value))
-  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B] = <span class="fu">f</span>(value) <span class="kw">match</span> {
-    <span class="kw">case</span> <span class="fu">Failure</span>(e, b) =&gt; <span class="fu">Failure</span>(<span class="fu">append</span>(e, err), b)
-    <span class="kw">case</span> <span class="fu">Success</span>(b)   =&gt; <span class="fu">Failure</span>(err, b)
-  }
-
-  <span class="kw">def</span> error = Some(err)
-  <span class="kw">def</span> either = <span class="fu">Left</span>(err)
-}</code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb1-1"><a href="#cb1-1"></a><span class="co">/**</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a> <span class="co">*</span> A monad used to entrain computations on a value that might fail<span class="co">.</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a> <span class="co">*</span> This is distinct from Either in that it allows computations to continue</span>
+<span id="cb1-4"><a href="#cb1-4"></a> <span class="co">*</span> in the presence of errors<span class="co">,</span> with the possibility of a degraded result<span class="co">.</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a> <span class="co">*</span> The user of the result can then decide its suitability for use based upon</span>
+<span id="cb1-6"><a href="#cb1-6"></a> <span class="co">*</span> any errors that might be returned<span class="co">.</span> Errors must form a semigroup<span class="co">.</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a> <span class="co">*/</span></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="kw">sealed</span> <span class="kw">trait</span> Attempt[E, +A] {</span>
+<span id="cb1-9"><a href="#cb1-9"></a>  <span class="kw">def</span> value: A</span>
+<span id="cb1-10"><a href="#cb1-10"></a>  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B]</span>
+<span id="cb1-11"><a href="#cb1-11"></a>  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B]</span>
+<span id="cb1-12"><a href="#cb1-12"></a></span>
+<span id="cb1-13"><a href="#cb1-13"></a>  <span class="kw">def</span> error: Option[E]</span>
+<span id="cb1-14"><a href="#cb1-14"></a>  <span class="kw">def</span> either: Either[E, A]</span>
+<span id="cb1-15"><a href="#cb1-15"></a>}</span>
+<span id="cb1-16"><a href="#cb1-16"></a></span>
+<span id="cb1-17"><a href="#cb1-17"></a><span class="kw">case</span> <span class="kw">class</span> Success[E, +A](value: A) <span class="kw">extends</span> Attempt[E, A] {</span>
+<span id="cb1-18"><a href="#cb1-18"></a>  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B] = <span class="fu">Success</span>(<span class="fu">f</span>(value))</span>
+<span id="cb1-19"><a href="#cb1-19"></a>  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B] = <span class="fu">f</span>(value)</span>
+<span id="cb1-20"><a href="#cb1-20"></a>  <span class="kw">def</span> error = None</span>
+<span id="cb1-21"><a href="#cb1-21"></a>  <span class="kw">def</span> either = <span class="fu">Right</span>(value)</span>
+<span id="cb1-22"><a href="#cb1-22"></a>}</span>
+<span id="cb1-23"><a href="#cb1-23"></a></span>
+<span id="cb1-24"><a href="#cb1-24"></a><span class="kw">case</span> <span class="kw">class</span> Failure[E, +A](err: E, value: A)(<span class="kw">implicit</span> append: (E, E) =&gt; E) <span class="kw">extends</span> Attempt[E, A] {</span>
+<span id="cb1-25"><a href="#cb1-25"></a>  <span class="kw">def</span> map[B](f: A =&gt; B): Attempt[E, B] = <span class="fu">Failure</span>(err, <span class="fu">f</span>(value))</span>
+<span id="cb1-26"><a href="#cb1-26"></a>  <span class="kw">def</span> flatMap[B](f: A =&gt; Attempt[E, B]): Attempt[E, B] = <span class="fu">f</span>(value) <span class="kw">match</span> {</span>
+<span id="cb1-27"><a href="#cb1-27"></a>    <span class="kw">case</span> <span class="fu">Failure</span>(e, b) =&gt; <span class="fu">Failure</span>(<span class="fu">append</span>(e, err), b)</span>
+<span id="cb1-28"><a href="#cb1-28"></a>    <span class="kw">case</span> <span class="fu">Success</span>(b)   =&gt; <span class="fu">Failure</span>(err, b)</span>
+<span id="cb1-29"><a href="#cb1-29"></a>  }</span>
+<span id="cb1-30"><a href="#cb1-30"></a></span>
+<span id="cb1-31"><a href="#cb1-31"></a>  <span class="kw">def</span> error = Some(err)</span>
+<span id="cb1-32"><a href="#cb1-32"></a>  <span class="kw">def</span> either = <span class="fu">Left</span>(err)</span>
+<span id="cb1-33"><a href="#cb1-33"></a>}</span></code></pre></div>
 <p>Pretty trivial, but maybe occasionally useful. Here’s how it looks in my code:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">def</span> <span class="fu">mergeComponents</span>(f: String =&gt; JSONReport): Attempt[List[String], JSONReport] = {
-  components.<span class="fu">map</span>(f).<span class="fu">map</span>(_.<span class="fu">mergeComponents</span>(f)).<span class="fu">foldLeft</span>[Attempt[List[String], JSONReport]](<span class="fu">Success</span>(<span class="kw">this</span>)) {
-    (result, comp) =&gt; <span class="kw">for</span> {
-      cur &lt;- result
-      jr  &lt;- comp
-      properties     &lt;- <span class="fu">mergeProperties</span>(cur, jr)
-      queries        &lt;- <span class="fu">mergeQueries</span>(cur, jr)
-      dataAliases    &lt;- <span class="fu">mergeAliases</span>(cur, jr, queries.<span class="fu">values</span>)
-      dataTransforms &lt;- <span class="fu">mergeTransforms</span>(cur, jr, dataAliases.<span class="fu">values</span>)
-      dataMailers    &lt;- <span class="fu">mergeMailers</span>(cur, jr, dataTransforms.<span class="fu">values</span>)
-    } <span class="kw">yield</span> {
-      <span class="fu">JSONReport</span>(
-        cur.<span class="fu">reportId</span>, cur.<span class="fu">active</span>, cur.<span class="fu">version</span>, properties,
-        queries, dataAliases, dataTransforms, dataMailers,
-        cur.<span class="fu">dataRange</span>, Nil
-      )
-    }
-  }
-}</code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">def</span> <span class="fu">mergeComponents</span>(f: String =&gt; JSONReport): Attempt[List[String], JSONReport] = {</span>
+<span id="cb2-2"><a href="#cb2-2"></a>  components.<span class="fu">map</span>(f).<span class="fu">map</span>(_.<span class="fu">mergeComponents</span>(f)).<span class="fu">foldLeft</span>[Attempt[List[String], JSONReport]](<span class="fu">Success</span>(<span class="kw">this</span>)) {</span>
+<span id="cb2-3"><a href="#cb2-3"></a>    (result, comp) =&gt; <span class="kw">for</span> {</span>
+<span id="cb2-4"><a href="#cb2-4"></a>      cur &lt;- result</span>
+<span id="cb2-5"><a href="#cb2-5"></a>      jr  &lt;- comp</span>
+<span id="cb2-6"><a href="#cb2-6"></a>      properties     &lt;- <span class="fu">mergeProperties</span>(cur, jr)</span>
+<span id="cb2-7"><a href="#cb2-7"></a>      queries        &lt;- <span class="fu">mergeQueries</span>(cur, jr)</span>
+<span id="cb2-8"><a href="#cb2-8"></a>      dataAliases    &lt;- <span class="fu">mergeAliases</span>(cur, jr, queries.<span class="fu">values</span>)</span>
+<span id="cb2-9"><a href="#cb2-9"></a>      dataTransforms &lt;- <span class="fu">mergeTransforms</span>(cur, jr, dataAliases.<span class="fu">values</span>)</span>
+<span id="cb2-10"><a href="#cb2-10"></a>      dataMailers    &lt;- <span class="fu">mergeMailers</span>(cur, jr, dataTransforms.<span class="fu">values</span>)</span>
+<span id="cb2-11"><a href="#cb2-11"></a>    } <span class="kw">yield</span> {</span>
+<span id="cb2-12"><a href="#cb2-12"></a>      <span class="fu">JSONReport</span>(</span>
+<span id="cb2-13"><a href="#cb2-13"></a>        cur.<span class="fu">reportId</span>, cur.<span class="fu">active</span>, cur.<span class="fu">version</span>, properties,</span>
+<span id="cb2-14"><a href="#cb2-14"></a>        queries, dataAliases, dataTransforms, dataMailers,</span>
+<span id="cb2-15"><a href="#cb2-15"></a>        cur.<span class="fu">dataRange</span>, Nil</span>
+<span id="cb2-16"><a href="#cb2-16"></a>      )</span>
+<span id="cb2-17"><a href="#cb2-17"></a>    }</span>
+<span id="cb2-18"><a href="#cb2-18"></a>  }</span>
+<span id="cb2-19"><a href="#cb2-19"></a>}</span></code></pre></div>
 <p>Here each of the various mergeX methods return an <code>Attempt[List[String], X]</code> where <code>X</code> is something needed to build the ultimate report. Here I’m just aggregating lists of strings describing the errors, but of course any type for which <code>(E, E) =&gt; E</code> is defined would work.</p>
 <p>Attempt. For all those times where you want a monad that says, “Hey, I maybe couldn’t get exactly what you asked for. Maybe it’s little broken, maybe it won’t work right, but this the best I could do. You decide.”</p>
 <p><strong>EDIT:</strong></p>
@@ -97,26 +97,26 @@
 It’s not <em>exactly</em> like Writer, because it just requires a semigroup for E instead of a monoid, and the presence of a “log” is optional, so maybe it’s better suited than Writer for a few instances.</p>
 <p>The one really nice thing about rediscovering well-known concepts is that doing the derivation for yourself, in the context of some real problem, gives you a much more complete understanding of where the thing you reintevented is applicable!</p>
 <p>Inspired by michid’s example in the comments below, here’s a simpler example that demonstrates some utility his doesn’t quite capture.</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">implicit</span> <span class="kw">val</span> append = (l1: List[String], l2: List[String]) =&gt; l1 ::: l2
-
-<span class="kw">def</span> <span class="fu">succ</span>(s: String) = Success[List[String], String](<span class="st">&quot;result: success&quot;</span>)
-<span class="kw">val</span> fail: String =&gt; Attempt[List[String], String] = {
-  <span class="kw">var</span> count = <span class="dv">0</span>
-  (s: String) =&gt; {
-    count += <span class="dv">1</span>
-    <span class="fu">Failure</span>(List(<span class="st">&quot;failure &quot;</span> + count), s + <span class="st">&quot; then failure&quot;</span>)
-  }
-}
-
-<span class="kw">val</span> r = <span class="kw">for</span> {
-  x &lt;- <span class="fu">succ</span>(<span class="st">&quot;here we go!&quot;</span>)
-  y &lt;- <span class="fu">fail</span>(x)
-  z &lt;- <span class="fu">fail</span>(y)
-} <span class="kw">yield</span> z
-
-<span class="fu">println</span>(r)</code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">implicit</span> <span class="kw">val</span> append = (l1: List[String], l2: List[String]) =&gt; l1 ::: l2</span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="kw">def</span> <span class="fu">succ</span>(s: String) = Success[List[String], String](<span class="st">&quot;result: success&quot;</span>)</span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="kw">val</span> fail: String =&gt; Attempt[List[String], String] = {</span>
+<span id="cb3-5"><a href="#cb3-5"></a>  <span class="kw">var</span> count = <span class="dv">0</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a>  (s: String) =&gt; {</span>
+<span id="cb3-7"><a href="#cb3-7"></a>    count += <span class="dv">1</span></span>
+<span id="cb3-8"><a href="#cb3-8"></a>    <span class="fu">Failure</span>(List(<span class="st">&quot;failure &quot;</span> + count), s + <span class="st">&quot; then failure&quot;</span>)</span>
+<span id="cb3-9"><a href="#cb3-9"></a>  }</span>
+<span id="cb3-10"><a href="#cb3-10"></a>}</span>
+<span id="cb3-11"><a href="#cb3-11"></a></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="kw">val</span> r = <span class="kw">for</span> {</span>
+<span id="cb3-13"><a href="#cb3-13"></a>  x &lt;- <span class="fu">succ</span>(<span class="st">&quot;here we go!&quot;</span>)</span>
+<span id="cb3-14"><a href="#cb3-14"></a>  y &lt;- <span class="fu">fail</span>(x)</span>
+<span id="cb3-15"><a href="#cb3-15"></a>  z &lt;- <span class="fu">fail</span>(y)</span>
+<span id="cb3-16"><a href="#cb3-16"></a>} <span class="kw">yield</span> z</span>
+<span id="cb3-17"><a href="#cb3-17"></a></span>
+<span id="cb3-18"><a href="#cb3-18"></a><span class="fu">println</span>(r)</span></code></pre></div>
 <p>This results in:</p>
-<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="fu">Failure</span>(List(failure <span class="dv">2</span>, failure <span class="dv">1</span>),result: success then failure then failure)</code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb4-1"><a href="#cb4-1"></a><span class="fu">Failure</span>(List(failure <span class="dv">2</span>, failure <span class="dv">1</span>),result: success then failure then failure)</span></code></pre></div>
 <p><em>migrated from http://logji.blogspot.com/2010/07/monad-for-failure-tolerant-computations.html </em></p>
 
   <div id="disqus_thread"></div>
