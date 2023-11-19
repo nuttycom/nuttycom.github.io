@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="keywords" content="functional programming, scala, haskell, voting">
+        <title>Logji - 2019-08-22-records_of_functions</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">Logji &mdash; Kris Nuttycombe</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>2019-08-22-records_of_functions</h1>
+
+            <article>
+  <a href="https://twitter.com/share" class="twitter-share-button" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+  <div class="info">
+      Posted on August 22, 2019
+      
+  </div>
+
+  <div class="info">
+      
+  </div>
+
+  <div id="header">
+<div id="logo">
+<a href="../">Logji — Kris Nuttycombe</a>
+</div>
+<div id="navigation">
+<a href="../">Home</a> <a href="../about.html">About</a> <a href="../contact.html">Contact</a> <a href="../archive.html">Archive</a>
+</div>
+</div>
+<div id="content">
+<h1 id="dumb-workmanlike-effects">Dumb Workmanlike Effects</h1>
+<article>
+<a href="https://twitter.com/share" class="twitter-share-button">Tweet</a>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<div class="info">
+Posted on August 22, 2019
+</div>
+<div class="info">
+
+</div>
+<p>For the last several years in the Haskell community, effect systems have been a common topic of discussion and experimentation. The approaches have ranged from Free Monads to Eff, from <a href="https://www.fpcomplete.com/blog/2017/06/readert-design-pattern">ReaderT Env IO</a> to “MTL-style”, and most recently, <a href="https://www.tweag.io/posts/2018-10-04-capability.html">capabilities</a> in a variety of forms.</p>
+<p>I’ve had the good fortune to use a number of these approaches in professional Haskell application development; in my first project I used <code>Free</code>, then moved into a role on a team where the <code>ReaderT Env IO</code> pattern was in vogue. Then, I switched teams again, and inherited a codebase where part of it manages its effects with <a href="http://hackage.haskell.org/package/freer-simple">Freer Monads</a>, part uses MTL-style, and part of it is just bare, nasty <code>MonadIO</code>.</p>
+<p>In using all of these, there have been some that I’ve loathed, some that I’ve found tolerable, and some that have verged on good. Freer works pretty well, at the cost of</p>
+<div id="disqus_thread">
+
+</div>
+<script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2019-08-22-records_of_functions.html";  
+    this.page.identifier = "/posts/2019-08-22-records_of_functions.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+<noscript>
+Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+</noscript>
+</article>
+</div>
+<div id="footer">
+<a href="https://twitter.com/nuttycom" class="twitter-follow-button">Follow @nuttycom</a>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+</div>
+
+  <div id="disqus_thread"></div>
+  <script>
+
+  /**
+  *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+  *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+  var disqus_config = function () {
+    this.page.url = "https://nuttycom.github.io/posts/2019-08-22-records_of_functions.html";  
+    this.page.identifier = "/posts/2019-08-22-records_of_functions.html"; 
+  };
+  (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = '//nuttycom-github-io.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
+
+        </div>
+        <div id="footer">
+            <a href="https://twitter.com/nuttycom" class="twitter-follow-button" data-show-count="false">Follow @nuttycom</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+        </div>
+    </body>
+</html>
